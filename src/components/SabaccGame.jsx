@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { Shuffle, ChevronDown, ChevronUp, Info, X } from 'lucide-react';
 import Card from './Card';
+import InterferenceField from './InterferenceField';
+import SabaccPot from './SabaccPot';
 import PlayerHand from './PlayerHand';
 import Opponents from './Opponents';
 import GameControls from './GameControls';
@@ -22,10 +24,10 @@ const SabaccGame = () => {
 
     const WINNING_SCORE = 23;
     const BUST_THRESHOLD = 24;
-    const NUM_AI_PLAYERS = 2;
-    const INITIAL_CREDITS = 1000;
-    const ANTE_AMOUNT = 20;
-    const MINIMUM_BET = 20;
+    const NUM_AI_PLAYERS = 4;
+    const INITIAL_CREDITS = 10000;
+    const ANTE_AMOUNT = 200;
+    const MINIMUM_BET = 200;
 
     // Game state
     const [deck, setDeck] = useState([]);
@@ -43,21 +45,25 @@ const SabaccGame = () => {
     const [showRules, setShowRules] = useState(false);
     const [configRounds, setConfigRounds] = useState(3);
     const [showGameLog, setShowGameLog] = useState(false);
-
+    const [shiftProbability, setShiftProbability] = useState(0.2); // Base 20% shift chance
+    const [isShiftImminent, setIsShiftImminent] = useState(false); // Indicator for upcoming shift
+    const [sabaccPotAmount, setSabaccPotAmount] = useState(0); // Sabacc pot separate from main pot
+    const [isPlayerProtected, setIsPlayerProtected] = useState(false); // Protection from Sabacc shift
+    const [protectionCost, setProtectionCost] = useState(10); // Cost to protect against shifts
     const startNewGame = () => {
         // Create and shuffle the deck
         const newDeck = createDeck();
-        console.log("New deck created:", newDeck.length, "cards");
 
         // Create AI players
         const newAiPlayers = Array(NUM_AI_PLAYERS).fill().map((_, index) => ({
             id: index + 1,
             name: `Opponent ${index + 1}`,
             hand: [],
-            credits: INITIAL_CREDITS - ANTE_AMOUNT, // Deduct ante immediately
+            credits: INITIAL_CREDITS - ANTE_AMOUNT,
             handValue: 0,
             folded: false,
-            bet: 0
+            bet: 0,
+            isProtected: false // Add protection status for AI players
         }));
 
         // Calculate the pot (all antes)
@@ -85,9 +91,7 @@ const SabaccGame = () => {
             };
         });
 
-        console.log("After dealing, deck has:", newDeck.length, "cards");
-
-        // Set all state at once with a single render cycle
+        // Set all state at once
         setDeck(newDeck);
         setPlayerHand(playerCards);
         setAiPlayers(updatedAiPlayers);
@@ -100,8 +104,15 @@ const SabaccGame = () => {
         setRoundNumber(1);
         setGameMessage("It's your turn. Draw, stand, or fold.");
         setGameLog(['New game started!', 'All players paid the ante of ' + ANTE_AMOUNT + ' credits.', 'Initial cards dealt to all players.']);
-    };
 
+        // Reset shift-related state
+        setShiftProbability(0.2);
+        setIsShiftImminent(false);
+        setIsPlayerProtected(false);
+
+        // Keep the Sabacc pot from previous games
+        // Alternatively, you could reset it: setSabaccPotAmount(0);
+    };
     // Create and shuffle a new deck
     const createDeck = () => {
         let newDeck = [];
@@ -156,6 +167,19 @@ const SabaccGame = () => {
             return 0;
         }
         return hand.reduce((total, card) => total + (card ? card.value : 0), 0);
+    };
+
+
+// Add this function for buying protection
+    const buyProtection = () => {
+        if (playerCredits >= protectionCost) {
+            setPlayerCredits(prevCredits => prevCredits - protectionCost);
+            setSabaccPotAmount(prevAmount => prevAmount + protectionCost);
+            setIsPlayerProtected(true);
+            addToGameLog(`You paid ${protectionCost} credits for shift protection.`);
+        } else {
+            setGameMessage("Not enough credits to buy protection!");
+        }
     };
 
     // Collect antes from all players
@@ -332,10 +356,15 @@ const SabaccGame = () => {
         setAiPlayers(updatedAiPlayers);
         setDeck(updatedDeck);
 
-        // Check if a Sabacc Shift should occur (random chance)
-        const shouldShift = Math.random() < 0.2; // 20% chance of a Sabacc Shift
+        // Increase shift probability with each round
+        const newShiftProbability = Math.min(0.8, shiftProbability + 0.1);
+        setShiftProbability(newShiftProbability);
+        // Set shift imminent when probability is high
+        const willShiftOccur = Math.random() < newShiftProbability;
+        setIsShiftImminent(willShiftOccur && roundNumber < configRounds);
 
-        if (shouldShift && roundNumber < configRounds) {
+        // Check if a Sabacc Shift should occur
+        if (willShiftOccur && roundNumber < configRounds) {
             setGamePhase('sabaccShift');
             setGameMessage("A Sabacc Shift has occurred! Cards are being exchanged...");
             addToGameLog("A Sabacc Shift has occurred!");
@@ -364,23 +393,9 @@ const SabaccGame = () => {
         let updatedPlayerHand = [...playerHand];
         let updatedAiPlayers = [...aiPlayers];
 
-        // Random chance for each player's cards to be affected
-
-        // Player hand
-        updatedPlayerHand = updatedPlayerHand.map(card => {
-            if (Math.random() < 0.5) { // 50% chance per card
-                // Return card to deck and draw new one
-                updatedDeck.push(card);
-                return updatedDeck.shift();
-            }
-            return card;
-        });
-
-        // AI player hands
-        updatedAiPlayers = updatedAiPlayers.map(player => {
-            if (player.folded) return player;
-
-            const newHand = player.hand.map(card => {
+        // Player hand - only change if not protected
+        if (!isPlayerProtected) {
+            updatedPlayerHand = updatedPlayerHand.map(card => {
                 if (Math.random() < 0.5) { // 50% chance per card
                     // Return card to deck and draw new one
                     updatedDeck.push(card);
@@ -388,16 +403,43 @@ const SabaccGame = () => {
                 }
                 return card;
             });
+            addToGameLog("Your hand was affected by the Sabacc Shift!");
+        } else {
+            addToGameLog("Your protection prevented the Sabacc Shift from affecting your hand!");
+            setIsPlayerProtected(false); // Protection is consumed
+        }
+        // AI player hands - check individual protection
+        updatedAiPlayers = updatedAiPlayers.map(player => {
+            if (player.folded) return player;
 
-            return {
-                ...player,
-                hand: newHand,
-                handValue: calculateHandValue(newHand)
-            };
+            if (player.isProtected) {
+                // AI player is protected
+                addToGameLog(`${player.name}'s protection prevented the Sabacc Shift from affecting their hand!`);
+                return { ...player, isProtected: false }; // Protection is consumed
+            } else {
+                // AI player is not protected - apply shift
+                const newHand = player.hand.map(card => {
+                    if (Math.random() < 0.5) { // 50% chance per card
+                        updatedDeck.push(card);
+                        return updatedDeck.shift();
+                    }
+                    return card;
+                });
+
+                return {
+                    ...player,
+                    hand: newHand,
+                    handValue: calculateHandValue(newHand)
+                };
+            }
         });
 
         // Shuffle the deck after exchanges
         updatedDeck = shuffleDeck(updatedDeck);
+
+        // Reset shift probability after a shift occurs
+        setShiftProbability(0.2);
+        setIsShiftImminent(false);
 
         setPlayerHand(updatedPlayerHand);
         setAiPlayers(updatedAiPlayers);
@@ -410,11 +452,12 @@ const SabaccGame = () => {
         addToGameLog("The Sabacc Shift has ended. Play continues.");
     };
 
-    // Determine the winner of the round
+// Update the determineWinner function to add Sabacc pot distribution
     const determineWinner = (playerFolded) => {
         let winningPlayer = null;
         let highestValue = -999;
         let winningMessage = "";
+        let isPureSabacc = false;
 
         // If player didn't fold, check their hand
         if (!playerFolded) {
@@ -423,6 +466,7 @@ const SabaccGame = () => {
             if (playerHandValue <= WINNING_SCORE) {
                 highestValue = playerHandValue;
                 winningPlayer = "You";
+                isPureSabacc = playerHandValue === WINNING_SCORE;
             }
         }
 
@@ -433,11 +477,12 @@ const SabaccGame = () => {
             if (player.handValue <= WINNING_SCORE && player.handValue > highestValue) {
                 highestValue = player.handValue;
                 winningPlayer = player.name;
+                isPureSabacc = player.handValue === WINNING_SCORE;
             }
         });
 
         // Pure Sabacc (exactly 23) or closest to 23
-        if (highestValue === WINNING_SCORE) {
+        if (isPureSabacc) {
             winningMessage = `${winningPlayer} won with a Pure Sabacc (23)!`;
         } else if (winningPlayer) {
             winningMessage = `${winningPlayer} won with a hand value of ${highestValue}!`;
@@ -445,23 +490,36 @@ const SabaccGame = () => {
             winningMessage = "Everyone busted! The house takes the pot.";
         }
 
-        // Distribute winnings
+        // Distribute main pot
         if (winningPlayer === "You") {
             setPlayerCredits(prevCredits => prevCredits + pot);
-            winningMessage += ` You won ${pot} credits!`;
+            winningMessage += ` You won ${pot} credits from the main pot!`;
+
+            // Also award Sabacc pot for Pure Sabacc
+            if (isPureSabacc && sabaccPotAmount > 0) {
+                setPlayerCredits(prevCredits => prevCredits + sabaccPotAmount);
+                winningMessage += ` You also won the Sabacc pot of ${sabaccPotAmount} credits!`;
+                setSabaccPotAmount(0);
+            }
         } else if (winningPlayer) {
-            // Find the AI player and give them the pot
+            // Find the AI player and give them the main pot
             setAiPlayers(prevAiPlayers => prevAiPlayers.map(player => {
                 if (player.name === winningPlayer) {
                     return {
                         ...player,
-                        credits: player.credits + pot
+                        credits: player.credits + pot + (isPureSabacc ? sabaccPotAmount : 0)
                     };
                 }
                 return player;
             }));
 
             winningMessage += ` ${winningPlayer} won ${pot} credits!`;
+
+            // Also award Sabacc pot for Pure Sabacc
+            if (isPureSabacc && sabaccPotAmount > 0) {
+                winningMessage += ` ${winningPlayer} also won the Sabacc pot of ${sabaccPotAmount} credits!`;
+                setSabaccPotAmount(0);
+            }
         }
 
         setWinner(winningPlayer);
@@ -525,7 +583,21 @@ const SabaccGame = () => {
                         <span className="deck-value">{deck.length} cards</span>
                     </div>
                 </section>
+                <section className="interference-controls">
+                    <InterferenceField
+                        isShiftImminent={isShiftImminent}
+                        isShiftActive={gamePhase === 'sabaccShift'}
+                        shiftProbability={shiftProbability}
+                    />
 
+                    <SabaccPot
+                        sabaccPotAmount={sabaccPotAmount}
+                        isPlayerProtected={isPlayerProtected}
+                        canBuyProtection={gamePhase === 'playing' && currentPlayer === 0 && playerCredits >= protectionCost}
+                        buyProtection={buyProtection}
+                        protectionCost={protectionCost}
+                    />
+                </section>
                 {/* Player's hand */}
                 <PlayerHand
                     hand={playerHand}
