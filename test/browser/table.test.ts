@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it, vi } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
 import "../../src/components/sabacc-table.ts"
@@ -14,8 +14,13 @@ const mount = async (seed = 42) => {
   return { el, store }
 }
 
-const settle = async (el: SabaccTable) => {
+/** Let the table render the final state: finish any playback, then wait for children. */
+const settle = async (el: SabaccTable, finishPlayback = true) => {
   await el.updateComplete
+  if (finishPlayback) {
+    el.playback.skip()
+    await el.updateComplete
+  }
   const kids = [...(el.shadowRoot?.querySelectorAll("sabacc-seat, sabacc-log") ?? [])]
   await Promise.all(kids.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
   const cards = kids.flatMap((c) => [...(c.shadowRoot?.querySelectorAll("sabacc-card") ?? [])])
@@ -112,7 +117,7 @@ describe("<sabacc-table>", () => {
   it("announces a Sabacc Shift without any advance warning", async () => {
     const { el, store } = await mount()
     expect(shadow(el).querySelector("meter")).toBeNull()
-    store.last.set([GameEvent.Shifted({ changed: [] })])
+    store.last.set([{ event: GameEvent.Shifted({ changed: [] }), game: store.game.get() }])
     await settle(el)
     expect(shadow(el).querySelector("[role=alert]")?.textContent).toContain("Sabacc Shift")
   })
@@ -127,6 +132,62 @@ describe("<sabacc-table>", () => {
       expect(m.index ?? 0).toBeGreaterThan(gate)
       expect(Number(m[1])).toBeGreaterThanOrEqual(0.5)
     }
+  })
+})
+
+describe("opponent turn playback (sabacc-jlp)", () => {
+  afterEach(() => vi.useRealTimers())
+
+  it("plays opponents' moves one at a time, narrates them, then hands control back", async () => {
+    vi.useFakeTimers()
+    const { el, store } = await mount(11)
+    button(el, "Deal a hand")?.click()
+    await settle(el, false)
+    const total = store.last.get().length
+    expect(total).toBeGreaterThan(2)
+    expect(el.playback.playing).toBe(true)
+    expect(button(el, "Skip ahead")).toBeDefined()
+    expect(button(el, "Check") ?? button(el, "Match")).toBeUndefined()
+    expect(output(el)?.textContent).toContain("New hand")
+    // The log holds back moves that haven't been shown yet.
+    expect(shadow(el).querySelector("sabacc-log")?.events.length).toBeLessThan(store.log.get().length)
+
+    await vi.advanceTimersByTimeAsync(800)
+    await el.updateComplete
+    expect(el.playback.revealed.length).toBeGreaterThan(1)
+
+    await vi.runAllTimersAsync()
+    await settle(el, false)
+    expect(el.playback.playing).toBe(false)
+    expect(button(el, "Check") ?? button(el, "Match")).toBeDefined()
+    expect(shadow(el).querySelector("sabacc-log")?.events.length).toBe(store.log.get().length)
+  })
+
+  it("skips straight to your turn", async () => {
+    vi.useFakeTimers()
+    const { el } = await mount(11)
+    button(el, "Deal a hand")?.click()
+    await settle(el, false)
+    button(el, "Skip ahead")?.click()
+    await settle(el, false)
+    expect(el.playback.playing).toBe(false)
+    expect(button(el, "Check") ?? button(el, "Match")).toBeDefined()
+  })
+})
+
+describe("saved table (sabacc-3nc)", () => {
+  it("greets you when your table was restored", async () => {
+    const data = new Map<string, string>()
+    const storage = { getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => void data.set(k, v), removeItem: (k: string) => void data.delete(k) }
+    const first = createStore(1, { storage })
+    first.dispatch(Command.StartHand())
+    first.dispatch(Command.Fold())
+    const el = document.createElement("sabacc-table") as SabaccTable
+    el.store = createStore(2, { storage })
+    document.body.append(el)
+    await settle(el)
+    expect(output(el)?.textContent).toContain("Welcome back")
+    expect(shadow(el).querySelector(".seed")?.textContent).toContain("saved in this browser")
   })
 })
 

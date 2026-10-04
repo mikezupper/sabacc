@@ -12,6 +12,9 @@ lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - Events go up, data goes down. Components call `store.dispatch(...)`; they never
   call domain functions that change the game.
 - Derived values go in `willUpdate()`, not `render()`.
+- Show what happened between your moves by playing back `store.last` beats with the
+  `Playback` controller. Never keep game state in a timer, and keep playback instant
+  under `prefers-reduced-motion`.
 - Styles live in `static styles = css\`...\``, built on the shared tokens in
   `src/styles/shared.ts`.
 - Element names use the `sabacc-` prefix, one element per file, file name = element name.

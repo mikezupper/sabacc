@@ -113,10 +113,22 @@ export type GameEvent = Data.TaggedEnum<{
 }>
 export const GameEvent = Data.taggedEnum<GameEvent>()
 
+/** One thing that happened, with the game exactly as it stood right after it. */
+export interface Beat {
+  readonly event: GameEvent
+  readonly game: Game
+}
+
+/**
+ * The result of a command: the final game, plus every beat on the way there so the
+ * UI can play the hand back truthfully (opponent turns, shifts) without owning state.
+ */
 export interface Transition {
   readonly game: Game
-  readonly events: ReadonlyArray<GameEvent>
+  readonly beats: ReadonlyArray<Beat>
 }
+
+export const eventsOf = (t: Transition): ReadonlyArray<GameEvent> => t.beats.map((b) => b.event)
 
 export class NotYourTurn extends Data.TaggedError("NotYourTurn")<{ readonly expected: string }> {}
 export class HandInProgress extends Data.TaggedError("HandInProgress")<{}> {}

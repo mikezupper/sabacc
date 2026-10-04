@@ -74,7 +74,17 @@ export const takeCard = (game: Game, index: number): Option.Option<readonly [Gam
 
 export const deckSize = (game: Game): number => Option.match(playing(game), { onNone: () => 0, onSome: (p) => p.deck.length })
 
+/** A transition to `game`; each event's snapshot is `game`. */
+export const transition = (game: Game, ...events: ReadonlyArray<GameEvent>): Transition => ({
+  game,
+  beats: events.map((event) => ({ event, game })),
+})
+
+/** Continue `t` to `game`, recording `events` at that state. */
 export const append = (t: Transition, game: Game, ...events: ReadonlyArray<GameEvent>): Transition => ({
   game,
-  events: [...t.events, ...events],
+  beats: [...t.beats, ...events.map((event) => ({ event, game }))],
 })
+
+/** Run `next` after `t`: its beats keep their own snapshots. */
+export const followedBy = (t: Transition, next: Transition): Transition => ({ game: next.game, beats: [...t.beats, ...next.beats] })

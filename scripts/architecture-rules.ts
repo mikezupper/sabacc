@@ -98,6 +98,9 @@ export const checkSources = (files: ReadonlyArray<SourceFile>): ReadonlyArray<Vi
         if (ban.pattern.test(code)) out.push({ path: f.path, rule: ban.rule, message: `src/domain must stay pure: ${ban.fix}` })
       }
     }
+    if (/export\s+(const|function|let|var)\s+then\b|export\s*\{[^}]*\bthen\b[^}]*\}/.test(f.text)) {
+      out.push({ path: f.path, rule: "no-then-export", message: "don't export `then`: a module namespace with `then` is treated as a promise when awaited or dynamically imported; rename it" })
+    }
     if (f.text.match(/Effect\.run(Sync|Promise|Fork|Callback)/) && f.path !== "src/state/store.ts") {
       out.push({ path: f.path, rule: "single-runtime", message: "Effects run only in src/state/store.ts; return the Effect and let the store run it" })
     }

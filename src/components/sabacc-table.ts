@@ -7,7 +7,8 @@ import { Command, YOU, type Game, type Step } from "../domain/model.ts"
 import { deckSize, handPot, playing, seatAt } from "../domain/table.ts"
 import type { Store } from "../state/store.ts"
 import { base, buttons } from "../styles/shared.ts"
-import { describeError, describeResult, formatCredits, seatName } from "./describe.ts"
+import { describeError, describeEvent, describeResult, formatCredits, seatName } from "./describe.ts"
+import { Playback } from "./playback.ts"
 import "./sabacc-log.ts"
 import "./sabacc-seat.ts"
 import type { CardActionDetail } from "./sabacc-seat.ts"
@@ -76,6 +77,12 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   @property({ attribute: false }) store: Store | undefined = undefined
   /** Draft amount for Bet / Raise to. */
   @state() private amount = MIN_BET
+  /** Plays opponents' turns back beat by beat (presentation only). */
+  readonly playback = new Playback(this)
+
+  override willUpdate(): void {
+    if (this.store !== undefined) this.playback.sync(this.store.last.get())
+  }
 
   private send(command: Command): void {
     this.store?.dispatch(command)
@@ -86,10 +93,18 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   }
 
   private prompt(game: Game): string {
+    const text = this.basePrompt(game)
+    // Until anything happens after a reload, say the table came back from storage.
+    return this.store?.restored && this.store.log.get().length === 0 ? `Welcome back: your saved table is restored. ${text}` : text
+  }
+
+  private basePrompt(game: Game): string {
     const store = this.store
     if (store === undefined) return ""
     const notice = store.notice.get()
     if (Option.isSome(notice)) return describeError(notice.value)
+    const beat = this.playback.playing ? this.playback.revealed.at(-1) : undefined
+    if (beat !== undefined) return describeEvent(beat.event)
     if (game.phase._tag === "Lobby") {
       const last = Option.getOrUndefined(game.phase.lastHand)
       if (last !== undefined) return describeResult(last)
@@ -115,6 +130,11 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   private controls(game: Game) {
     const you = Option.getOrUndefined(seatAt(game, YOU))
     if (you === undefined) return nothing
+    if (this.playback.playing)
+      return html`<div class="controls" role="group" aria-label="Playback">
+        <button @click=${() => this.playback.skip()}>Skip ahead</button>
+        <p class="hint">${this.playback.pending} more ${this.playback.pending === 1 ? "move" : "moves"} to show.</p>
+      </div>`
     if (game.phase._tag === "Lobby")
       return html`<div class="controls" role="group" aria-label="Table">
         <button class="primary" @click=${() => this.send(Command.StartHand())} ?disabled=${you.credits < BUY_IN}>
@@ -164,13 +184,14 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   override render() {
     const store = this.store
     if (store === undefined) return nothing
-    const game = store.game.get()
+    // While a playback runs, draw the snapshot being shown; otherwise the live game.
+    const game = this.playback.frame ?? store.game.get()
     const you = Option.getOrUndefined(seatAt(game, YOU))
     const p = Option.getOrUndefined(playing(game))
     const step = yourStep(game)
     const lastHand = game.phase._tag === "Lobby" ? Option.getOrUndefined(game.phase.lastHand) : undefined
     const result = (seat: number) => lastHand?.seats.find((s) => s.seat === seat)
-    const shifted = store.last.get().some((e) => e._tag === "Shifted")
+    const shifted = this.playback.revealed.some((b) => b.event._tag === "Shifted")
     const drawing = step?._tag === "Drawing"
 
     return html`<div class="stack">
@@ -218,8 +239,11 @@ export class SabaccTable extends SignalWatcher(LitElement) {
         </ul>
       </section>
 
-      <sabacc-log .events=${store.log.get()}></sabacc-log>
-      <p class="seed">Table seed <data value=${store.seed}>${store.seed}</data> · <a href=${`?seed=${store.seed}`}>Replay this table</a></p>
+      <sabacc-log .events=${store.log.get().slice(0, store.log.get().length - this.playback.pending)}></sabacc-log>
+      <p class="seed">
+        ${store.persistent ? "Your table is saved in this browser." : "Replay table: not saved."}
+        Seed <data value=${store.seed}>${store.seed}</data> · <a href=${`?seed=${store.seed}`}>Replay from this seed</a>
+      </p>
     </div>`
   }
 }

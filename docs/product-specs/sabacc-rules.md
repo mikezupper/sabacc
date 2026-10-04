@@ -142,7 +142,9 @@ first player left of the dealer who is still in [H].
 8. **Everyone else folds.** The last player in the hand wins the hand pot without a
    reveal or penalties [F]. The Sabacc pot needs a revealed Pure Sabacc or Idiot's
    Array, so it carries over [H].
-9. Credits carry over between hands. **New table** resets everything [H]. Pure Sabacc
+9. Credits carry over between hands, and your table (mid-hand too) is saved in this
+   browser after every move and restored when you come back. A `?seed=` replay link
+   starts an unsaved table. **New table** resets everything [H]. Pure Sabacc
    "typically" ends a game in lore [L]; here play continues [H].
 
 ## Opponent behaviour [H]

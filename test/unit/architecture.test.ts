@@ -37,6 +37,11 @@ describe("architecture rules", () => {
     expect(rules("src/state/store.ts", `import { Effect } from "effect"\nEffect.runSync(e)\n`)).toEqual([])
   })
 
+  it("rejects a `then` export (it makes the module look like a promise)", () => {
+    expect(rules("src/domain/x.ts", "export const then = (a: number) => a\n")).toContain("no-then-export")
+    expect(rules("src/domain/x.ts", "export const followedBy = (a: number) => a\n")).toEqual([])
+  })
+
   it("rejects React files", () => {
     expect(rules("src/components/App.jsx", "")).toEqual(["no-react"])
   })

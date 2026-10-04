@@ -1,10 +1,10 @@
 // Spec "Showdown and payouts". Pure: sudden demise deals from the existing deck.
 import { Option } from "effect"
 import { SUDDEN_DEMISE_CARDS } from "./constants.ts"
-import { GameEvent, Phase, type Game, type GameEvent as Event, type HandResult, type SeatResult } from "./model.ts"
+import { GameEvent, Phase, type Beat, type Game, type HandResult, type SeatResult, type Transition } from "./model.ts"
 import { layers, split } from "./pots.ts"
 import { evaluate, winsSabaccPot, type Evaluation } from "./scoring.ts"
-import { handPot, inHand, isIn, seatAt, takeCard, updateSeat } from "./table.ts"
+import { handPot, inHand, isIn, seatAt, takeCard, transition, updateSeat } from "./table.ts"
 
 const bestOf = (seats: ReadonlyArray<number>, rank: ReadonlyMap<number, number>): ReadonlyArray<number> => {
   const top = Math.max(...seats.map((s) => rank.get(s) ?? -1))
@@ -16,7 +16,7 @@ const evalOf = (game: Game, seat: number): Evaluation =>
 
 interface Demise {
   readonly game: Game
-  readonly events: ReadonlyArray<Event>
+  readonly beats: ReadonlyArray<Beat>
   /** Rank of every hand that can still win; bombed hands are absent. */
   readonly rank: ReadonlyMap<number, number>
 }
@@ -26,33 +26,33 @@ const suddenDemise = (start: Demise): Demise => {
   const step = (d: Demise, round: number): Demise => {
     const tied = bestOf([...d.rank.keys()], d.rank)
     if (tied.length < 2 || round >= SUDDEN_DEMISE_CARDS) return d
-    const dealt = tied.reduce<Option.Option<{ game: Game; events: ReadonlyArray<Event> }>>(
+    const dealt = tied.reduce<Option.Option<Transition>>(
       (acc, seat) =>
         Option.flatMap(acc, (a) =>
-          Option.map(takeCard(a.game, seat), ([g, card]) => ({ game: g, events: [...a.events, GameEvent.SuddenDemise({ seat, card })] })),
+          Option.map(takeCard(a.game, seat), ([g, card]) => ({ game: g, beats: [...a.beats, { event: GameEvent.SuddenDemise({ seat, card }), game: g }] })),
         ),
-      Option.some({ game: d.game, events: [] }),
+      Option.some(transition(d.game)),
     )
     // Deck ran out [H]: the tie stands and is split.
     if (Option.isNone(dealt)) return d
-    const { game, events } = dealt.value
+    const { game, beats } = dealt.value
     const rank = new Map(d.rank)
     for (const seat of tied) {
       const e = evalOf(game, seat)
       if (e.bombedOut) rank.delete(seat)
       else rank.set(seat, e.rank)
     }
-    return step({ game, events: [...d.events, ...events], rank }, round + 1)
+    return step({ game, beats: [...d.beats, ...beats], rank }, round + 1)
   }
   return step(start, 0)
 }
 
-export const showdown = (game: Game, caller: Option.Option<number>): { readonly game: Game; readonly events: ReadonlyArray<Event> } => {
+export const showdown = (game: Game, caller: Option.Option<number>): Transition => {
   const pot = handPot(game)
   const revealed = new Map(inHand(game).map((s) => [s.index, evaluate(s.hand)] as const))
   const bombed = [...revealed].filter(([, e]) => e.bombedOut).map(([seat]) => seat)
   const live = new Map([...revealed].filter(([, e]) => !e.bombedOut).map(([seat, e]) => [seat, e.rank] as const))
-  const demise = suddenDemise({ game, events: [], rank: live })
+  const demise = suddenDemise({ game, beats: [], rank: live })
 
   const potLayers = layers(demise.game.seats.map((s) => ({ seat: s.index, committed: s.committed, folded: !isIn(s) })))
   const awards = potLayers.map((layer) => {
@@ -98,18 +98,19 @@ export const showdown = (game: Game, caller: Option.Option<number>): { readonly 
     (g, s) => updateSeat(g, s.index, (x) => ({ ...x, credits: x.credits + won(s.index) - paid(s.index), committed: 0, roundBet: 0 })),
     demise.game,
   )
+  const final = { ...settled, sabaccPot: sabaccSplit.remainder, phase: Phase.Lobby({ lastHand: Option.some(result) }) }
+  // Demise cards were dealt on the way; penalties and the result land on the settled table.
   return {
-    game: { ...settled, sabaccPot: sabaccSplit.remainder, phase: Phase.Lobby({ lastHand: Option.some(result) }) },
-    events: [
-      ...demise.events,
-      ...penalties.filter((p) => p.amount > 0).map((p) => GameEvent.Penalty(p)),
-      GameEvent.HandEnded({ result }),
+    game: final,
+    beats: [
+      ...demise.beats,
+      ...transition(final, ...penalties.filter((p) => p.amount > 0).map((p) => GameEvent.Penalty(p)), GameEvent.HandEnded({ result })).beats,
     ],
   }
 }
 
 /** Everyone else folded [F]: the last player takes the hand pot, no reveal, no penalties. */
-export const lastStanding = (game: Game, seat: number): { readonly game: Game; readonly events: ReadonlyArray<Event> } => {
+export const lastStanding = (game: Game, seat: number): Transition => {
   const pot = handPot(game)
   const result: HandResult = {
     handPot: pot,
@@ -123,5 +124,5 @@ export const lastStanding = (game: Game, seat: number): { readonly game: Game; r
     (g, s) => updateSeat(g, s.index, (x) => ({ ...x, credits: x.credits + (s.index === seat ? pot : 0), committed: 0, roundBet: 0 })),
     game,
   )
-  return { game: { ...settled, phase: Phase.Lobby({ lastHand: Option.some(result) }) }, events: [GameEvent.HandEnded({ result })] }
+  return transition({ ...settled, phase: Phase.Lobby({ lastHand: Option.some(result) }) }, GameEvent.HandEnded({ result }))
 }

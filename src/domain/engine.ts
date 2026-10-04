@@ -23,7 +23,7 @@ import {
   type Transition,
 } from "./model.ts"
 import { lastStanding } from "./showdown.ts"
-import { clockwiseFromDealer, deckSize, newTable, playing, seatAt, setStep, takeCard } from "./table.ts"
+import { clockwiseFromDealer, deckSize, newTable, playing, seatAt, setStep, takeCard, followedBy, transition } from "./table.ts"
 import { openBetting } from "./betting.ts"
 
 type Result = Effect.Effect<Transition, GameError>
@@ -74,25 +74,21 @@ const startHand = (game: Game): Result =>
     // Deal one card at a time, clockwise from left of the dealer [L][F].
     const dealOrder = Array.flatten(Array.replicate(clockwiseFromDealer(anted).filter((i) => seated.includes(i)), HAND_SIZE))
     const dealt = dealOrder.reduce((g, i) => Option.match(takeCard(g, i), { onNone: () => g, onSome: ([next]) => next }), anted)
-    const t: Transition = {
-      game: openBetting(dealt),
-      events: [
-        GameEvent.HandStarted({ dealer, seated }),
-        ...game.seats.filter((s) => !seated.includes(s.index)).map((s) => GameEvent.SatOut({ seat: s.index })),
-        GameEvent.RoundStarted({ round: 1 }),
-      ],
-    }
+    const t: Transition = transition(
+      openBetting(dealt),
+      GameEvent.HandStarted({ dealer, seated }),
+      ...game.seats.filter((s) => !seated.includes(s.index)).map((s) => GameEvent.SatOut({ seat: s.index })),
+      GameEvent.RoundStarted({ round: 1 }),
+    )
     const [only] = seated
-    return seated.length === 1 && only !== undefined
-      ? { ...t, ...{ game: lastStanding(t.game, only).game, events: [...t.events, ...lastStanding(t.game, only).events] } }
-      : yield* advance(t)
+    return seated.length === 1 && only !== undefined ? followedBy(t, lastStanding(t.game, only)) : yield* advance(t)
   })
 
 const bet = (game: Game, choice: Parameters<typeof applyBet>[2]): Result =>
   Effect.gen(function* () {
     const seat = yield* yourTurn(game, "Betting")
     const r = yield* Either.match(applyBet(game, seat, choice), { onLeft: Effect.fail, onRight: Effect.succeed })
-    return yield* advance({ game: r.game, events: [r.event] })
+    return yield* advance(transition(r.game, r.event))
   })
 
 const drawAction = (game: Game, action: "gain" | "stand" | { readonly trade: number }): Result =>
@@ -110,22 +106,22 @@ const lockCard = (game: Game, cardId: number): Result =>
     if (p?.step._tag === "Drawing" && p.step.lockedThisTurn)
       return yield* Effect.fail(new InvalidCard({ reason: "You can move only one card into the field per turn." }))
     const card = yield* yourCard(seat, cardId)
-    return { game: lock(game, YOU, card), events: [GameEvent.Locked({ seat: YOU, card })] }
+    return transition(lock(game, YOU, card), GameEvent.Locked({ seat: YOU, card }))
   })
 
 const callWindow = (game: Game, call: boolean): Result =>
   Effect.gen(function* () {
     yield* yourTurn(game, "CallWindow")
-    if (call) return yield* callHand({ game, events: [] }, YOU, false)
+    if (call) return yield* callHand(transition(game), YOU, false)
     const p = Option.getOrUndefined(playing(game))
     const rest = p?.step._tag === "CallWindow" ? p.step.toAct.slice(1) : []
-    return yield* advance({ game: setStep(game, Step.CallWindow({ toAct: rest })), events: [GameEvent.Passed({ seat: YOU })] })
+    return yield* advance(transition(setStep(game, Step.CallWindow({ toAct: rest })), GameEvent.Passed({ seat: YOU })))
   })
 
 /** The only way game state changes. */
 export const applyCommand = (game: Game, command: Command): Result =>
   Command.$match(command, {
-    NewTable: () => Effect.succeed({ game: newTable(), events: [GameEvent.TableReset()] }),
+    NewTable: () => Effect.succeed(transition(newTable(), GameEvent.TableReset())),
     StartHand: () => startHand(game),
     Check: () => bet(game, "check"),
     BetTo: ({ to }) => bet(game, { to }),

@@ -50,6 +50,23 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await click(page, "Fold")
     await shot("fold-1-result")
   },
+  // Real motion: catch opponents' turns mid-playback, then skip ahead.
+  playback: async (page, shot) => {
+    await click(page, /Deal a hand/)
+    await page.waitForTimeout(1200)
+    await shot("playback-1-mid")
+    if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+    await shot("playback-2-your-turn")
+  },
+  // Saved table: deal, reload without a seed, and the hand is still there.
+  restore: async (page, shot) => {
+    await page.goto(page.url().replace(/\?seed=\d+/, ""))
+    await page.locator("sabacc-table").getByRole("button").first().waitFor()
+    await click(page, /Deal a hand/)
+    await page.reload()
+    await page.locator("sabacc-table").getByRole("button").first().waitFor()
+    await shot("restore-1-after-reload")
+  },
   rules: async (page, shot) => {
     await page.getByRole("link", { name: "Rules" }).click()
     await shot("rules-1")
@@ -65,7 +82,8 @@ for (const [name, run] of Object.entries(paths)) {
   if (values.path !== "all" && values.path !== name) continue
   for (const scheme of ["dark", "light"] as const) {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
-      const page = await browser.newPage({ colorScheme: scheme, viewport })
+      // Scripted paths use reduced motion (instant playback); `playback` keeps real motion.
+      const page = await browser.newPage({ colorScheme: scheme, viewport, reducedMotion: name === "playback" ? "no-preference" : "reduce" })
       const errors: Array<string> = []
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()))
       page.on("pageerror", (e) => errors.push(e.message))

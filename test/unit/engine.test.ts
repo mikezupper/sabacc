@@ -4,11 +4,11 @@ import { Card, fullDeck } from "../../src/domain/cards.ts"
 import { BUY_IN, HAND_ANTE, MIN_HAND, SABACC_ANTE, STARTING_CREDITS } from "../../src/domain/constants.ts"
 import { applyCommand } from "../../src/domain/engine.ts"
 import { shiftCheck } from "../../src/domain/flow.ts"
-import { Command, Phase, SeatStatus, Step, YOU, type Game, type GameError, type GameEvent } from "../../src/domain/model.ts"
+import { Command, eventsOf, Phase, SeatStatus, Step, YOU, type Beat, type Game, type GameError, type GameEvent } from "../../src/domain/model.ts"
 import { showdown } from "../../src/domain/showdown.ts"
 import { handPot, newTable } from "../../src/domain/table.ts"
 
-type Run = { game: Game; events: ReadonlyArray<GameEvent>; error: Option.Option<GameError> }
+type Run = { game: Game; events: ReadonlyArray<GameEvent>; beats: ReadonlyArray<Beat>; error: Option.Option<GameError> }
 
 const play = (seed: number, game: Game, ...commands: ReadonlyArray<Command>): Run => {
   const rng = Random.make(seed)
@@ -17,9 +17,9 @@ const play = (seed: number, game: Game, ...commands: ReadonlyArray<Command>): Ru
     const r = Effect.runSync(Effect.either(applyCommand(acc.game, cmd).pipe(Effect.withRandom(rng))))
     return Either.match(r, {
       onLeft: (error) => ({ ...acc, error: Option.some(error) }),
-      onRight: (t) => ({ game: t.game, events: [...acc.events, ...t.events], error: Option.none() }),
+      onRight: (t) => ({ game: t.game, events: [...acc.events, ...eventsOf(t)], beats: [...acc.beats, ...t.beats], error: Option.none() }),
     })
-  }, { game, events: [], error: Option.none() })
+  }, { game, events: [], beats: [], error: Option.none() })
 }
 
 const errorTag = (r: Run) => Option.map(r.error, (e) => e._tag)
@@ -60,9 +60,9 @@ const randomGame = (seed: number, picks: ReadonlyArray<number>): Run => {
     const r = Effect.runSync(Effect.either(applyCommand(acc.game, cmd).pipe(Effect.withRandom(rng))))
     return Either.match(r, {
       onLeft: (error) => (error._tag === "DeckEmpty" ? acc : { ...acc, error: Option.some(error) }),
-      onRight: (t) => ({ game: t.game, events: [...acc.events, ...t.events], error: Option.none() }),
+      onRight: (t) => ({ game: t.game, events: [...acc.events, ...eventsOf(t)], beats: [...acc.beats, ...t.beats], error: Option.none() }),
     })
-  }, { game: newTable(), events: [], error: Option.none() })
+  }, { game: newTable(), events: [], beats: [], error: Option.none() })
 }
 
 const picks = fc.array(fc.double({ min: 0, max: 0.999, noNaN: true }), { minLength: 1, maxLength: 60 })
@@ -127,6 +127,13 @@ describe("whole hands (properties)", () => {
     }), { numRuns: 200 })
   })
 
+  it("records a valid table at every beat, so playback never shows an impossible state", () => {
+    fc.assert(fc.property(fc.integer(), picks, (seed, ps) => {
+      const { beats } = randomGame(seed, ps)
+      for (const b of beats) expect(money(b.game)).toBe(TABLE_MONEY)
+    }), { numRuns: 200 })
+  })
+
   it("keeps the interference field: locked cards are never shifted or traded", () => {
     fc.assert(fc.property(fc.integer(), picks, (seed, ps) => {
       const { game } = randomGame(seed, ps)
@@ -175,19 +182,19 @@ describe("showdown [L][F]", () => {
     const g = table({ 1: [n(15), n(10)], 2: [n(10), n(9)] })
     const pot = handPot(g)
     const r = showdown(g, Option.none())
-    expect(r.events).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, amount: pot, reason: "bombed out" }))
+    expect(eventsOf(r)).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, amount: pot, reason: "bombed out" }))
     expect(winners(r.game)).toEqual(Option.some([2]))
   })
 
   it("a hand of exactly 0 bombs out [F]", () => {
     const r = showdown(table({ 1: [n(11), f("Balance", -11)], 2: [n(5), n(6)] }), Option.none())
-    expect(r.events).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, reason: "bombed out" }))
+    expect(eventsOf(r)).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, reason: "bombed out" }))
   })
 
   it("a caller who doesn't win pays the failed-call penalty [F HP]", () => {
     const g = table({ 1: [n(10), n(9)], 2: [n(15), n(6)] })
     const r = showdown(g, Option.some(1))
-    expect(r.events).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, amount: handPot(g), reason: "failed call" }))
+    expect(eventsOf(r)).toContainEqual(expect.objectContaining({ _tag: "Penalty", seat: 1, amount: handPot(g), reason: "failed call" }))
   })
 
   it("moves the hand pot into the Sabacc pot when everyone bombs out [F]", () => {
@@ -201,7 +208,7 @@ describe("showdown [L][F]", () => {
     // Both at +20; the deck deals +1 to each, so still tied, then +1 again: split.
     const g = table({ 1: [n(10), n(10)], 2: [n(15), n(5)] })
     const r = showdown(g, Option.none())
-    expect(r.events.filter((e) => e._tag === "SuddenDemise")).toHaveLength(4)
+    expect(eventsOf(r).filter((e) => e._tag === "SuddenDemise")).toHaveLength(4)
     expect(winners(r.game)).toEqual(Option.some([1, 2]))
     expect(money(r.game)).toBe(money(g))
   })
@@ -223,7 +230,7 @@ describe("the Sabacc Shift [L]", () => {
     const g = table({ 0: [n(5), n(6), n(7)], 1: [n(8), n(9)] })
     const locked: Game = { ...g, seats: g.seats.map((s) => (s.index === 0 ? { ...s, field: [s.hand[0]!.id] } : s)) }
     const seed = Array.from({ length: 200 }, (_, i) => i).find((s) =>
-      Effect.runSync(shiftCheck(locked).pipe(Effect.withRandom(Random.make(s)))).events.some((e) => e._tag === "Shifted"),
+      eventsOf(Effect.runSync(shiftCheck(locked).pipe(Effect.withRandom(Random.make(s))))).some((e) => e._tag === "Shifted"),
     )!
     const after = Effect.runSync(shiftCheck(locked).pipe(Effect.withRandom(Random.make(seed)))).game
     const you = after.seats[0]!
@@ -235,7 +242,7 @@ describe("the Sabacc Shift [L]", () => {
   it("happens about one roll in six", () => {
     const g = table({ 0: [n(5), n(6)] })
     const shifts = Array.from({ length: 600 }, (_, s) =>
-      Effect.runSync(shiftCheck(g).pipe(Effect.withRandom(Random.make(s)))).events.some((e) => e._tag === "Shifted"),
+      eventsOf(Effect.runSync(shiftCheck(g).pipe(Effect.withRandom(Random.make(s))))).some((e) => e._tag === "Shifted"),
     ).filter(Boolean).length
     expect(shifts).toBeGreaterThan(60)
     expect(shifts).toBeLessThan(150)
