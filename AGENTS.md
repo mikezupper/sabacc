@@ -37,6 +37,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
 | `npm run build` | Production build to `dist/` |
+| `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |
 | `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone); screenshots + console errors in `.drive/` |
 
 ## Invariants (enforced — don't work around them)

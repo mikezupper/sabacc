@@ -20,6 +20,9 @@ export const DICE_SIDES = 6
 
 export const SABACC = 23
 
+/** The call window opens from the end of this round onward (spec "Calling"). */
+export const CALL_FROM_ROUND = 1
+
 /** House safety cap: after this many rounds the hand is called automatically. */
 export const MAX_ROUNDS = 10
 

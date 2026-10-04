@@ -24,6 +24,7 @@ describe("rules copy matches the domain", () => {
     ["deal size", `dealt ${C.HAND_SIZE} cards`],
     ["minimum hand", `keep at least ${C.MIN_HAND} cards`],
     ["bomb-out line", `above +${C.SABACC}, below −${C.SABACC}, or exactly 0`],
+    ["earliest call", `From the end of the ${["zeroth", "first", "second", "third", "fourth"][C.CALL_FROM_ROUND]} round`],
     ["round cap", `After ${C.MAX_ROUNDS} rounds the hand is called automatically`],
     ["sudden demise cards", `up to ${["zero", "one", "two", "three"][C.SUDDEN_DEMISE_CARDS]}`],
     ["deck size", "76 cards"],

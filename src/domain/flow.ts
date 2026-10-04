@@ -3,7 +3,7 @@
 import { Effect, Either, Option, Random } from "effect"
 import { decideBet, decideCall, decideDraw } from "./ai.ts"
 import { DESIGNS, makeCard, type Card } from "./cards.ts"
-import { DICE_SIDES, MAX_ROUNDS } from "./constants.ts"
+import { CALL_FROM_ROUND, DICE_SIDES, MAX_ROUNDS } from "./constants.ts"
 import { applyBet, bettingIsMoot, openBetting } from "./betting.ts"
 import { GameEvent, Step, YOU, type Game, type GameEvent as Event, type Seat, type Transition } from "./model.ts"
 import { lastStanding, showdown } from "./showdown.ts"
@@ -132,7 +132,7 @@ export const advance = (t: Transition): Flow =>
       case "Drawing":
         if (seat === undefined)
           return Effect.flatMap(shiftCheck(t.game), (s) =>
-            advance(then(t, { game: setStep(s.game, Step.CallWindow({ toAct: order(s.game) })), events: s.events })),
+            advance(then(t, { game: setStep(s.game, Step.CallWindow({ toAct: p.round >= CALL_FROM_ROUND ? order(s.game) : [] })), events: s.events })),
           )
         return seat.index === YOU ? Effect.succeed(t) : opponentDraw(t, seat)
       case "CallWindow":

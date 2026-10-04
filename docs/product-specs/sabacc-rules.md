@@ -51,6 +51,10 @@ Every rule is tagged with its source. Full citations are in
    [F][L The Idiot]. Extra cards are allowed: Darth Bane won with 2, 3, Idiot, 9, 9 [L].
    It never bombs out.
 4. **Pure Sabacc** is a total of exactly +23 or −23 [L].
+   Expect it often: the deck makes ±23 in two cards 68 ways out of 2,850, so someone
+   at a five-player table is *dealt* a Pure Sabacc in about 12% of hands, and about
+   15–17% of hands are won with one (`npm run sim`, 2026-10-04). The lore calls it rare
+   but gives no number; this rate follows from the deck, not from the opponents.
 5. **Ranking** of hands that didn't bomb out, best first [L]:
    1. Idiot's Array
    2. Pure Sabacc +23, then Pure Sabacc −23

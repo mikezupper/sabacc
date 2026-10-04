@@ -16,7 +16,8 @@
     "test:unit": "vitest run --project unit",
     "test:browser": "vitest run --project browser",
     "check": "npm run typecheck && npm run lint:arch && npm test && npm run build",
-    "drive": "tsx scripts/drive.ts"
+    "drive": "tsx scripts/drive.ts",
+    "sim": "tsx scripts/sim.ts"
   },
   "dependencies": {
     "@lit-labs/signals": "~0.3.0",

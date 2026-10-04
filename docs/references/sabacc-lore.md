@@ -34,6 +34,15 @@ change.
 | Sabacc Shift | Randomizer pulses change the suit/value of every card not in the field [1] | Random chance per round; each card replaced with 50% | Close in spirit |
 | Interference field | Cards placed in it are frozen against shifts (1 per turn in canon rules [8]) | A paid "protection" for the whole hand; the name labels an odds meter | No |
 
+## How often Pure Sabacc happens
+
+Lore treats Pure Sabacc as rare but gives no rate. Measured with `npm run sim`
+(2,000 hands, 2026-10-04): someone is dealt ±23 in 11.9% of hands, and Pure Sabacc
+wins 17.3% of hands, or 13.3% when you fold every hand. Moving the earliest call from
+round 1 (Cloud City rules) to round 4 (pagat.com) only lowers that to 14.8%. The rate
+comes from the Legends deck at a five-player table, so the opponent policy wasn't
+weakened to suppress it (bead `sabacc-byq`).
+
 ## Other canon variants (for reference)
 
 - **Corellian Spike** (*Solo*, Galaxy's Edge): 62 cards, three suits ±1…±10 plus two
