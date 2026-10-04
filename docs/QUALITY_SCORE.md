@@ -11,6 +11,6 @@ B = tested; C = works, untested; D = known defects; F = missing.
 | Static page, rules copy, SEO | A | Legends rules as static HTML; rules-copy test (25 checks incl. every face card); title, description, OG, favicon | Canonical URL pending a domain (bead) |
 | Accessibility | B | Landmarks, skip link, named cards, labelled bet input, `<output aria-live>`, shift `role=alert`, `<details>`, 44px targets, reduced motion | No automated axe audit yet |
 | Harness (docs, lint, CI) | A | AGENTS.md map, docs/ system of record, lint:arch with remediation messages, CI, beads, drive script | — |
-| Performance | C | 208 KB JS / 68 KB gzip, works | Bundle mostly effect (bead) |
+| Performance | B | 233 KB JS / 76 KB gzip (2026-10-04); owner accepts this size: no CI budget, save/restore stays in the main bundle, the engine stays on Effect | — |
 
 Last graded: 2026-10-04, after the Legends rules change.

@@ -38,10 +38,17 @@ lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
   hit targets ≥ 44px, visible `:focus-visible`.
 - Motion honours `prefers-reduced-motion`. Nothing flashes more than 3 times a second.
 
+## Bundle
+
+- 233 KB / 76 KB gzip as of 2026-10-04, about three quarters Effect. The owner accepted
+  this: no size budget in CI, no lazy loading of save/restore, no move off Effect.
+  Re-measure only if a real-user performance problem appears.
+
 ## SEO
 
 - Unique `<title>` and meta description that describe the page. Open Graph tags.
 - A real favicon (`public/favicon.svg`).
 - No meta keywords, no `llms.txt`, no speculative JSON-LD (no matching rich result exists
   for a browser card game).
-- Canonical URL: pending a production domain (tracked as a bead).
+- Production URL: `https://sabacc.starwars.run/`, used as the self-referencing canonical
+  and `og:url` (checked by `test/unit/rules-copy.test.ts`). Change both together.

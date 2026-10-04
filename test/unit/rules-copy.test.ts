@@ -42,6 +42,12 @@ describe("rules copy matches the domain", () => {
     expect(rules).not.toMatch(/protection|Master of Coins|±10|shift chance/i)
   })
 
+  it("names the production URL as canonical and og:url (google-seo-fundamentals)", () => {
+    const site = "https://sabacc.starwars.run/"
+    expect(html).toContain(`<link rel="canonical" href="${site}">`)
+    expect(html).toContain(`<meta property="og:url" content="${site}">`)
+  })
+
   it("has no meta keywords (google-seo-fundamentals)", () => {
     expect(html).not.toContain('name="keywords"')
   })
