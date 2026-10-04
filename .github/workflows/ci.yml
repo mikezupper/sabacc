@@ -1,16 +1,27 @@
 name: ci
+
+# Runs on the self-hosted runner on the dev machine (label `sabacc`), not on
+# GitHub-hosted runners, so it uses no Actions minutes. It reuses the machine's
+# Node (fnm, v24) and Playwright Chromium. Only pushes to main and manual runs
+# trigger it, so nobody else can run code on that machine.
 on:
   push:
-  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, sabacc]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - name: Toolchain
+        run: node --version && npm --version
+      - run: npm ci --no-audit --no-fund
+      # Downloads Chromium only if this Playwright version's build is missing.
+      - run: npx playwright install chromium
       - run: npm run check
