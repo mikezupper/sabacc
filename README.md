@@ -18,4 +18,5 @@ npm run dev                       # http://localhost:5173  (?seed=42 replays a t
 npm run check                     # typecheck, architecture lint, tests, build
 ```
 
+CI runs `npm run check` on a self-hosted GitHub Actions runner (see AGENTS.md).
 Work is tracked with [beads](https://github.com/gastownhall/beads): `bd ready`.

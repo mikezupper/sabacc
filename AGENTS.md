@@ -63,7 +63,17 @@ then read the screenshots in `.drive/`; a run with console errors exits non-zero
 Add a path to `scripts/drive.ts` for any new flow. Interactively: `npm run dev` and
 open `http://localhost:5173/?seed=42`. The page shows the seed; put it in bug beads.
 
+## CI
+
+GitHub Actions on a **self-hosted runner** on the dev machine: no hosted minutes.
+`.github/workflows/ci.yml` runs `npm run check` on pushes to `main` and manual runs only
+(the repo is private; never add `pull_request` triggers for forks). Runner: `dev-rig-sabacc`
+(label `sabacc`), installed in `~/.local/share/actions-runner-sabacc`, run by the user
+service `sabacc-actions-runner` (`systemctl --user status sabacc-actions-runner`).
+Watch a run with `gh run watch -R mikezupper/sabacc`.
+
 ## Git
 
+Remote: `git@github.com:mikezupper/sabacc.git` (private), branch `main`.
 Conservative: do not commit or push unless the user asks. At hand-off, report changed
 files, `npm run check` output and bead status.
