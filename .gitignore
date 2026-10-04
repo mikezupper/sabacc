@@ -1,5 +1,9 @@
 node_modules/
 .env
+dist/
+.drive/
+.vitest-attachments/
+test/browser/__screenshots__/
 
 # Beads / Dolt files (added by bd init)
 .dolt/

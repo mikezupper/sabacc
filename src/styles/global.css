@@ -1,0 +1,182 @@
+/* Page-level styles for index.html. Component styles live in each element's
+   static styles and share the tokens declared here (custom properties inherit
+   into shadow roots). Conventions: docs/FRONTEND.md. */
+@layer reset, tokens, base, layout, components, utilities;
+
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+  * { margin: 0; }
+  img, svg { display: block; max-inline-size: 100%; }
+  input, button, select { font: inherit; }
+  h1, h2, h3, p { overflow-wrap: break-word; }
+}
+
+@layer tokens {
+  :root {
+    color-scheme: light dark;
+    --hue: 262;
+    --gold-hue: 82;
+
+    --surface: light-dark(oklch(97% 0.012 var(--gold-hue)), oklch(16% 0.035 var(--hue)));
+    --surface-raised: light-dark(oklch(100% 0.004 var(--gold-hue)), oklch(22% 0.045 var(--hue)));
+    --surface-sunken: light-dark(oklch(93% 0.016 var(--gold-hue)), oklch(13% 0.03 var(--hue)));
+    --text: light-dark(oklch(23% 0.035 var(--hue)), oklch(94% 0.012 var(--hue)));
+    --text-muted: color-mix(in oklch, var(--text) 66%, var(--surface));
+    --border: color-mix(in oklch, var(--text) 16%, var(--surface));
+
+    --accent: light-dark(oklch(52% 0.13 var(--gold-hue)), oklch(80% 0.15 var(--gold-hue)));
+    --accent-text: light-dark(oklch(99% 0.01 var(--gold-hue)), oklch(18% 0.04 var(--hue)));
+    --positive: light-dark(oklch(48% 0.14 150), oklch(80% 0.17 150));
+    --negative: light-dark(oklch(52% 0.19 27), oklch(72% 0.17 27));
+    --neutral: light-dark(oklch(50% 0.14 245), oklch(76% 0.12 245));
+    --warning: light-dark(oklch(58% 0.15 70), oklch(82% 0.16 80));
+    --danger: var(--negative);
+
+    --font-body: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-display: ui-rounded, "Arial Rounded MT Bold", system-ui, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
+
+    --space-2xs: 0.25rem;
+    --space-xs: 0.5rem;
+    --space-s: 0.75rem;
+    --space: clamp(1rem, 0.6rem + 1.4vw, 1.5rem);
+    --space-l: clamp(1.5rem, 1rem + 2vw, 2.5rem);
+
+    --step--1: clamp(0.83rem, 0.8rem + 0.15vw, 0.9rem);
+    --step-0: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
+    --step-1: clamp(1.2rem, 1.1rem + 0.6vw, 1.5rem);
+    --step-2: clamp(1.5rem, 1.25rem + 1.2vw, 2.1rem);
+    --step-3: clamp(1.9rem, 1.5rem + 2vw, 3rem);
+
+    --radius-s: 6px;
+    --radius: 12px;
+    --shadow: 0 1px 2px oklch(10% 0.03 var(--hue) / 0.18), 0 10px 28px oklch(10% 0.04 var(--hue) / 0.22);
+    --tap: 44px;
+    --measure: 68ch;
+  }
+}
+
+@layer base {
+  html { scrollbar-gutter: stable; }
+  body {
+    min-block-size: 100dvh;
+    background:
+      radial-gradient(120% 60% at 50% 0%, color-mix(in oklch, var(--accent) 10%, transparent), transparent 70%),
+      var(--surface);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: var(--step-0);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; }
+  h1 { font-size: var(--step-3); letter-spacing: 0.04em; text-transform: uppercase; }
+  h2 { font-size: var(--step-2); }
+  h3 { font-size: var(--step-1); }
+  p, li, dd { text-wrap: pretty; }
+  a { color: var(--accent); text-underline-offset: 0.2em; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  ::selection { background: color-mix(in oklch, var(--accent) 40%, transparent); }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+}
+
+@layer layout {
+  body {
+    display: grid;
+    grid-template-columns:
+      [full-start] minmax(var(--space), 1fr)
+      [content-start] min(100% - 2 * var(--space), 72rem)
+      [content-end] minmax(var(--space), 1fr) [full-end];
+    grid-template-rows: auto 1fr auto;
+    row-gap: var(--space-l);
+  }
+  body > * { grid-column: content; }
+  body > header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-s) var(--space);
+    padding-block-start: var(--space);
+  }
+  body > header nav { margin-inline-start: auto; }
+  body > header nav ul { display: flex; gap: var(--space-xs); padding: 0; list-style: none; }
+  body > header nav a {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: var(--tap);
+    padding-inline: var(--space-s);
+    border-radius: var(--radius-s);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  body > header nav a:hover { background: var(--surface-raised); }
+  main { display: grid; gap: var(--space-l); }
+  body > footer {
+    padding-block: var(--space) var(--space-l);
+    border-block-start: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: var(--step--1);
+  }
+}
+
+@layer components {
+  .skip-link {
+    position: absolute;
+    inset-inline-start: var(--space);
+    inset-block-start: -10rem;
+    padding: var(--space-xs) var(--space-s);
+    background: var(--accent);
+    color: var(--accent-text);
+    border-radius: var(--radius-s);
+    z-index: 1;
+    &:focus { inset-block-start: var(--space-xs); }
+  }
+
+  sabacc-table { display: block; min-block-size: 32rem; }
+  sabacc-table:not(:defined) > p {
+    padding: var(--space);
+    border: 1px dashed var(--border);
+    border-radius: var(--radius);
+    color: var(--text-muted);
+  }
+
+  #rules {
+    display: grid;
+    gap: var(--space);
+    padding: var(--space-l);
+    background: var(--surface-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    scroll-margin-block-start: var(--space);
+
+    & > * { max-inline-size: var(--measure); }
+    & section { display: grid; gap: var(--space-xs); }
+    & ol, & ul { padding-inline-start: 1.4em; display: grid; gap: var(--space-2xs); }
+    & dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--space-2xs) var(--space-s); }
+    & dt { font-weight: 600; }
+    & table { border-collapse: collapse; inline-size: 100%; }
+    & caption { text-align: start; font-weight: 600; padding-block-end: var(--space-xs); }
+    & th, & td { text-align: start; padding: var(--space-2xs) var(--space-xs); border-block-end: 1px solid var(--border); }
+    & td { font-variant-numeric: tabular-nums; }
+  }
+}
+
+@layer utilities {
+  .visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

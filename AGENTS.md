@@ -19,10 +19,11 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | You need… | Read |
 |---|---|
 | What the game rules are (source of truth) | [docs/product-specs/sabacc-rules.md](docs/product-specs/sabacc-rules.md) |
+| How our rules compare with Star Wars lore | [docs/references/sabacc-lore.md](docs/references/sabacc-lore.md) |
 | Layers, allowed imports, data flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Why things are the way they are | [docs/design-docs/core-beliefs.md](docs/design-docs/core-beliefs.md) |
 | Lit, HTML, CSS and SEO conventions | [docs/FRONTEND.md](docs/FRONTEND.md) |
-| Current plan, decisions, progress | [docs/exec-plans/active/](docs/exec-plans/active/) |
+| Current plan, decisions, progress | [docs/exec-plans/active/](docs/exec-plans/active/README.md) (done: [completed/](docs/exec-plans/completed/)) |
 | Known debt | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 | How good each area is | [docs/QUALITY_SCORE.md](docs/QUALITY_SCORE.md) |
 
@@ -36,6 +37,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
 | `npm run build` | Production build to `dist/` |
+| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone); screenshots + console errors in `.drive/` |
 
 ## Invariants (enforced — don't work around them)
 
@@ -55,8 +57,10 @@ google-seo-fundamentals · beads. Load the relevant one before working in its ar
 
 ## Validating a change in the real app
 
-Run `npm run dev`, open `http://localhost:5173/?seed=42`, and play the path you
-changed. The footer shows the seed; include it in any bug bead so the game replays.
+Run `npm run build && npm run drive` (add `-- --seed 7 --path fold` to narrow it),
+then read the screenshots in `.drive/`; a run with console errors exits non-zero.
+Add a path to `scripts/drive.ts` for any new flow. Interactively: `npm run dev` and
+open `http://localhost:5173/?seed=42`. The page shows the seed; put it in bug beads.
 
 ## Git
 

@@ -1,20 +1,36 @@
 {
-  "name": "sebaac-webui",
-  "version": "0.0.1",
-  "devDependencies": {
-    "vite": "^4.3.9",
-    "@vitejs/plugin-react": "^4.3.4"
-  },
-  "dependencies": {
-    "lucide-react": "^0.479.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
-  },
+  "name": "sabacc",
+  "version": "0.1.0",
+  "private": true,
   "type": "module",
-  "main": "main.js",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint:arch": "tsx scripts/check-architecture.ts",
+    "test": "vitest run",
+    "test:unit": "vitest run --project unit",
+    "test:browser": "vitest run --project browser",
+    "check": "npm run typecheck && npm run lint:arch && npm test && npm run build",
+    "drive": "tsx scripts/drive.ts"
+  },
+  "dependencies": {
+    "@lit-labs/signals": "~0.3.0",
+    "effect": "~3.22.0",
+    "lit": "^3.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@vitest/browser": "~4.1.10",
+    "@vitest/browser-playwright": "~4.1.10",
+    "playwright": "~1.63.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.9.3",
+    "vite": "~7.3.6",
+    "vitest": "~4.1.10"
   }
 }

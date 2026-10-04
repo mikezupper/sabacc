@@ -1,13 +1,116 @@
-<!DOCTYPE html>
-<html lang="en">
+<!doctype html>
+<html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Star Wars Sabacc</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Star Wars Sabacc — play the card game in your browser</title>
+  <meta name="description" content="Play classic Legends Sabacc against four opponents: no-limit betting, the Idiot's Array, Pure Sabacc and the Sabacc Shift. Free, in your browser, no sign-up.">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Star Wars Sabacc">
+  <meta property="og:description" content="Classic Legends Sabacc: get closest to ±23, lock cards in the interference field, survive the Sabacc Shift.">
+  <meta name="twitter:card" content="summary">
+  <link rel="stylesheet" href="/src/styles/global.css">
+  <script type="module" src="/src/entry-client.ts"></script>
 </head>
 <body>
-<div id="root"></div>
-<script type="module" src="/src/main.jsx"></script>
+  <a class="skip-link" href="#main">Skip to the game</a>
+
+  <header>
+    <h1>Star Wars Sabacc</h1>
+    <nav aria-label="Primary">
+      <ul>
+        <li><a href="#table">Play</a></li>
+        <li><a href="#rules">Rules</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section id="table" aria-label="Sabacc table">
+      <sabacc-table>
+        <p>Shuffling the deck… The game needs JavaScript; the rules below don't.</p>
+      </sabacc-table>
+    </section>
+
+    <!-- Player-facing rules. Must match docs/product-specs/sabacc-rules.md;
+         test/unit/rules-copy.test.ts checks the numbers. -->
+    <article id="rules" aria-labelledby="rules-heading">
+      <header>
+        <h2 id="rules-heading">How to play classic Sabacc</h2>
+        <p>The game of Lando Calrissian and Han Solo, played by the classic Legends rules. Build a hand as close to <strong>+23 or −23</strong> as you can, but the cards are electronic, and a Sabacc Shift can change them at any moment. Lock the cards you want to keep in the interference field.</p>
+      </header>
+
+      <section aria-labelledby="rules-glance">
+        <h3 id="rules-glance">At a glance</h3>
+        <table>
+          <caption>Table numbers</caption>
+          <tbody>
+            <tr><th scope="row">Starting credits</th><td><data value="10000">10,000</data> each, four opponents</td></tr>
+            <tr><th scope="row">Antes</th><td><data value="100">100</data> to the hand pot and <data value="100">100</data> to the Sabacc pot, every hand</td></tr>
+            <tr><th scope="row">Betting</th><td>No limit. Opening bets and raises are at least <data value="100">100</data> credits</td></tr>
+            <tr><th scope="row">Sabacc Shift</th><td>Doubles on two dice, after every round and once more after a call</td></tr>
+            <tr><th scope="row">Bombing out</th><td>A total above +23, below −23, or exactly 0</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section aria-labelledby="rules-cards">
+        <h3 id="rules-cards">The deck</h3>
+        <p>76 cards. Four suits (Coins, Flasks, Sabers and Staves) each run from 1 to 11, then Commander (12), Mistress (13), Master (14) and Ace (15). There are two of each of the eight face cards:</p>
+        <dl>
+          <dt>The Idiot</dt><dd>0</dd>
+          <dt>Queen of Air and Darkness</dt><dd>−2</dd>
+          <dt>Endurance</dt><dd>−8</dd>
+          <dt>Balance</dt><dd>−11</dd>
+          <dt>Demise</dt><dd>−13</dd>
+          <dt>Moderation</dt><dd>−14</dd>
+          <dt>The Evil One</dt><dd>−15</dd>
+          <dt>The Star</dt><dd>−17</dd>
+        </dl>
+      </section>
+
+      <section aria-labelledby="rules-hands">
+        <h3 id="rules-hands">Winning hands, best first</h3>
+        <ol>
+          <li><strong>Idiot's Array</strong>: The Idiot, a 2 and a 3, in any suits. It beats everything, even with other cards in the hand.</li>
+          <li><strong>Pure Sabacc</strong>: exactly +23, then exactly −23.</li>
+          <li>Every other hand, by distance from zero. At the same distance positive wins, so +21 beats −21, which beats +20.</li>
+        </ol>
+        <p>A total above +23, below −23, or exactly 0 <strong>bombs out</strong> when it's revealed. Until then you can still fix it.</p>
+      </section>
+
+      <section aria-labelledby="rules-flow">
+        <h3 id="rules-flow">A hand</h3>
+        <ol>
+          <li>Everyone who can pay both antes (200 credits) is dealt in. The dealer button moves one seat each hand, and play starts on the dealer's left.</li>
+          <li>Everyone is dealt 2 cards.</li>
+          <li><strong>Betting.</strong> Check, bet, match, raise or fold. No limit: you can go all-in at any time. A folded player's stake stays in the pot.</li>
+          <li><strong>Drawing.</strong> Gain a card, trade one for a new card (the discard leaves play), or stand. You always keep at least 2 cards. On the same turn you can lock one card face-down in the interference field. Locked cards still count, can't be traded, and are safe from shifts.</li>
+          <li><strong>The Sabacc Shift.</strong> The dice are rolled with no warning. On doubles, every card outside the interference field, in every hand, turns into a random new card.</li>
+          <li><strong>Calling.</strong> From the end of the first round, players may call the hand, but never on their own turn. If nobody calls, a new round of betting begins. After 10 rounds the hand is called automatically.</li>
+          <li>After a call the dice roll once more, then every hand is revealed.</li>
+        </ol>
+      </section>
+
+      <section aria-labelledby="rules-winning">
+        <h3 id="rules-winning">Payouts and penalties</h3>
+        <ul>
+          <li>The best hand that didn't bomb out wins the hand pot.</li>
+          <li>An Idiot's Array or a Pure Sabacc also wins the <strong>Sabacc pot</strong>. Otherwise the Sabacc pot keeps growing from hand to hand.</li>
+          <li>Every hand that bombs out pays a penalty equal to the hand pot into the Sabacc pot.</li>
+          <li>A player who calls the hand and doesn't win pays the same penalty.</li>
+          <li><strong>Sudden demise</strong> breaks ties: each tied player gets an extra card, up to two, and the best hand wins. A tie that's still standing splits the pot.</li>
+          <li>Players who are all-in can win only the part of the pot they matched (side pots).</li>
+          <li>If every hand bombs out, the hand pot goes into the Sabacc pot. If everyone else folds, the last player takes the hand pot without a reveal.</li>
+        </ul>
+      </section>
+    </article>
+  </main>
+
+  <footer>
+    <p><small>Galaxy Casino Entertainment · Coruscant. A fan-made game, not affiliated with or endorsed by Lucasfilm or Disney.</small></p>
+  </footer>
 </body>
 </html>
