@@ -28,7 +28,8 @@ const TABLE_MONEY = STARTING_CREDITS * 5
 
 /** A legal command for you in the current step, picked by `pick` (0…1). */
 const legal = (g: Game, pick: number): Command => {
-  if (g.phase._tag === "Lobby") return Command.StartHand()
+  // Broke players can only start a new table (found by CI: all-in, lose, then deal).
+  if (g.phase._tag === "Lobby") return (g.seats[YOU]?.credits ?? 0) < BUY_IN ? Command.NewTable() : Command.StartHand()
   const step = g.phase.step
   const you = g.seats[YOU]!
   const freeCard = you.hand.find((c) => !you.field.includes(c.id))
