@@ -133,6 +133,12 @@
   }
 
   sabacc-table { display: block; min-block-size: 32rem; }
+
+  /* 3d.html: the 3D table fills the viewport. */
+  html:has(body.stage-page) { scrollbar-gutter: auto; }
+  body.stage-page { display: block; min-block-size: 0; overflow: hidden; }
+  sabacc-3d { position: fixed; inset: 0; block-size: 100dvh; }
+  sabacc-3d:not(:defined) > p { margin: var(--space); }
   sabacc-table:not(:defined) > p {
     padding: var(--space);
     border: 1px dashed var(--border);

@@ -21,7 +21,7 @@ const settle = async (el: SabaccTable, finishPlayback = true) => {
     el.playback.skip()
     await el.updateComplete
   }
-  const kids = [...(el.shadowRoot?.querySelectorAll("sabacc-seat, sabacc-log") ?? [])]
+  const kids = [...(el.shadowRoot?.querySelectorAll("sabacc-seat, sabacc-log, sabacc-controls") ?? [])]
   await Promise.all(kids.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
   const cards = kids.flatMap((c) => [...(c.shadowRoot?.querySelectorAll("sabacc-card") ?? [])])
   await Promise.all(cards.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
@@ -31,8 +31,10 @@ const shadow = (el: Element) => el.shadowRoot ?? el.attachShadow({ mode: "open" 
 const seats = (el: SabaccTable) => [...shadow(el).querySelectorAll("sabacc-seat")]
 const cardLabels = (seat: Element) =>
   [...shadow(seat).querySelectorAll("sabacc-card")].map((c) => shadow(c).querySelector("svg")?.getAttribute("aria-label") ?? "")
+/** Buttons in `root`'s shadow, including its shared <sabacc-controls>. */
 const button = (root: Element, text: string) =>
-  [...shadow(root).querySelectorAll("button")].find((b) => b.textContent?.trim().startsWith(text))
+  [...shadow(root).querySelectorAll("button"), ...[...shadow(root).querySelectorAll("sabacc-controls")].flatMap((c) => [...shadow(c).querySelectorAll("button")])]
+    .find((b) => b.textContent?.trim().startsWith(text))
 const output = (el: SabaccTable) => shadow(el).querySelector("output")
 
 /** Play safe default moves until it's your turn in `tag` (or the hand ends). */

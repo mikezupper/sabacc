@@ -1,29 +1,24 @@
 import { SignalWatcher } from "@lit-labs/signals"
 import { Option } from "effect"
 import { css, html, LitElement, nothing } from "lit"
-import { customElement, property, state } from "lit/decorators.js"
-import { BUY_IN, MIN_BET } from "../domain/constants.ts"
-import { Command, YOU, type Game, type Step } from "../domain/model.ts"
+import { customElement, property } from "lit/decorators.js"
+import { Command, YOU, type Game } from "../domain/model.ts"
 import { deckSize, handPot, playing, seatAt } from "../domain/table.ts"
+import { formatCredits, seatName } from "../presentation/describe.ts"
+import { promptFor, yourStep } from "../presentation/prompt.ts"
 import type { Store } from "../state/store.ts"
-import { base, buttons } from "../styles/shared.ts"
-import { describeError, describeEvent, describeResult, formatCredits, seatName } from "./describe.ts"
+import { base } from "../styles/shared.ts"
 import { Playback } from "./playback.ts"
+import "./sabacc-controls.ts"
 import "./sabacc-log.ts"
 import "./sabacc-seat.ts"
 import type { CardActionDetail } from "./sabacc-seat.ts"
-
-const yourStep = (game: Game): Step | undefined => {
-  const p = Option.getOrUndefined(playing(game))
-  return p !== undefined && p.step.toAct[0] === YOU ? p.step : undefined
-}
 
 /** The game. Owns the store; every child is presentational. */
 @customElement("sabacc-table")
 export class SabaccTable extends SignalWatcher(LitElement) {
   static override styles = [
     base,
-    buttons,
     css`
       :host { container-type: inline-size; }
       .stack { display: grid; gap: var(--space); }
@@ -52,21 +47,6 @@ export class SabaccTable extends SignalWatcher(LitElement) {
         .shift { animation: flash 0.5s ease-in-out 3; }
       }
       @keyframes flash { 50% { opacity: 0.55; } }
-      .controls { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-xs); }
-      .controls label { display: grid; gap: var(--space-2xs); font-size: var(--step--1); font-weight: 600; }
-      .controls input {
-        inline-size: 9rem;
-        min-block-size: var(--tap);
-        padding-inline: var(--space-s);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-s);
-        background: var(--surface-raised);
-        color: var(--text);
-        font: inherit;
-        font-variant-numeric: tabular-nums;
-      }
-      .controls .push { margin-inline-start: auto; }
-      .hint { color: var(--text-muted); font-size: var(--step--1); }
       h2 { font-size: var(--step-2); }
       .opponents { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(15rem, 100%), 1fr)); gap: var(--space); }
       .seed { color: var(--text-muted); font-size: var(--step--1); }
@@ -75,8 +55,6 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   ]
 
   @property({ attribute: false }) store: Store | undefined = undefined
-  /** Draft amount for Bet / Raise to. */
-  @state() private amount = MIN_BET
   /** Plays opponents' turns back beat by beat (presentation only). */
   readonly playback = new Playback(this)
 
@@ -93,92 +71,15 @@ export class SabaccTable extends SignalWatcher(LitElement) {
   }
 
   private prompt(game: Game): string {
-    const text = this.basePrompt(game)
-    // Until anything happens after a reload, say the table came back from storage.
-    return this.store?.restored && this.store.log.get().length === 0 ? `Welcome back: your saved table is restored. ${text}` : text
-  }
-
-  private basePrompt(game: Game): string {
     const store = this.store
     if (store === undefined) return ""
-    const notice = store.notice.get()
-    if (Option.isSome(notice)) return describeError(notice.value)
-    const beat = this.playback.playing ? this.playback.revealed.at(-1) : undefined
-    if (beat !== undefined) return describeEvent(beat.event)
-    if (game.phase._tag === "Lobby") {
-      const last = Option.getOrUndefined(game.phase.lastHand)
-      if (last !== undefined) return describeResult(last)
-      return Option.exists(seatAt(game, YOU), (s) => s.credits < BUY_IN)
-        ? "You can't cover the antes. Start a new table."
-        : "Welcome to the table. Deal a hand to play."
-    }
-    const step = yourStep(game)
-    const you = Option.getOrUndefined(seatAt(game, YOU))
-    if (step === undefined || you === undefined) return "Waiting for the table…"
-    switch (step._tag) {
-      case "Betting": {
-        const owe = step.currentBet - you.roundBet
-        return owe > 0 ? `Betting: ${formatCredits(owe)} credits to match.` : "Betting: check or open with a bet."
-      }
-      case "Drawing":
-        return "Your draw: gain a card, trade one, or stand. You may lock one card in the interference field first."
-      case "CallWindow":
-        return "Call the hand and reveal, or let play continue?"
-    }
-  }
-
-  private controls(game: Game) {
-    const you = Option.getOrUndefined(seatAt(game, YOU))
-    if (you === undefined) return nothing
-    if (this.playback.playing)
-      return html`<div class="controls" role="group" aria-label="Playback">
-        <button @click=${() => this.playback.skip()}>Skip ahead</button>
-        <p class="hint">${this.playback.pending} more ${this.playback.pending === 1 ? "move" : "moves"} to show.</p>
-      </div>`
-    if (game.phase._tag === "Lobby")
-      return html`<div class="controls" role="group" aria-label="Table">
-        <button class="primary" @click=${() => this.send(Command.StartHand())} ?disabled=${you.credits < BUY_IN}>
-          Deal a hand (${formatCredits(BUY_IN)} in antes)
-        </button>
-        <button class="push" @click=${() => this.send(Command.NewTable())}>New table</button>
-      </div>`
-    const step = yourStep(game)
-    if (step === undefined) return html`<p class="hint">${you.status._tag === "Active" ? "Waiting for the table…" : "You're out of this hand."}</p>`
-    switch (step._tag) {
-      case "Betting": {
-        const owe = step.currentBet - you.roundBet
-        const minTo = step.currentBet === 0 ? MIN_BET : step.currentBet + step.minRaise
-        const maxTo = you.roundBet + you.credits
-        const amount = Math.min(Math.max(this.amount, minTo), maxTo)
-        return html`<div class="controls" role="group" aria-label="Your bet">
-          ${owe > 0
-            ? html`<button class="primary" @click=${() => this.send(Command.Match())}>Match ${formatCredits(Math.min(owe, you.credits))}</button>`
-            : html`<button class="primary" @click=${() => this.send(Command.Check())}>Check</button>`}
-          ${maxTo > minTo
-            ? html`<label>
-                  ${step.currentBet === 0 ? "Bet" : "Raise to"}
-                  <input type="number" inputmode="numeric" min=${minTo} max=${maxTo} step=${MIN_BET} .value=${String(amount)}
-                    @input=${(e: Event) => (this.amount = Number((e.target as HTMLInputElement).value))} />
-                </label>
-                <button @click=${() => this.send(Command.BetTo({ to: amount }))}>${step.currentBet === 0 ? "Bet" : "Raise"}</button>`
-            : nothing}
-          <button @click=${() => this.send(Command.AllIn())} ?disabled=${you.credits === 0}>All-in (${formatCredits(you.credits)})</button>
-          <button class="danger push" @click=${() => this.send(Command.Fold())}>Fold</button>
-        </div>`
-      }
-      case "Drawing":
-        return html`<div class="controls" role="group" aria-label="Your draw">
-          <button class="primary" @click=${() => this.send(Command.Gain())} ?disabled=${deckSize(game) === 0}>Gain a card</button>
-          <button @click=${() => this.send(Command.Stand())}>Stand</button>
-          <p class="hint">Trade or lock a card with the buttons under it.</p>
-        </div>`
-      case "CallWindow":
-        return html`<div class="controls" role="group" aria-label="Call window">
-          <button class="primary" @click=${() => this.send(Command.CallHand())}>Call the hand</button>
-          <button @click=${() => this.send(Command.Pass())}>Keep playing</button>
-          <p class="hint">Losing a call costs a penalty equal to the hand pot.</p>
-        </div>`
-    }
+    return promptFor({
+      game,
+      notice: store.notice.get(),
+      beat: this.playback.playing ? this.playback.revealed.at(-1)?.event : undefined,
+      // Until anything happens after a reload, say the table came back from storage.
+      welcomeBack: store.restored && store.log.get().length === 0,
+    })
   }
 
   override render() {
@@ -219,7 +120,13 @@ export class SabaccTable extends SignalWatcher(LitElement) {
           ?can-trade=${drawing && deckSize(game) > 0}
           .result=${result(YOU)}
         ></sabacc-seat>
-        ${this.controls(game)}
+        <sabacc-controls
+          .game=${game}
+          ?playing=${this.playback.playing}
+          .pending=${this.playback.pending}
+          @command=${(e: CustomEvent<Command>) => this.send(e.detail)}
+          @skip=${() => this.playback.skip()}
+        ></sabacc-controls>
       </section>
 
       <section class="stack" aria-labelledby="opponents-heading">

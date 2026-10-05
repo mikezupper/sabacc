@@ -12,7 +12,8 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
-            provider: playwright(),
+            // SwiftShader gives headless Chromium WebGL for the 3D view's tests.
+            provider: playwright({ launchOptions: { args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"] } }),
             instances: [{ browser: "chromium" }],
           },
         },

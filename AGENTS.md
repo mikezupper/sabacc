@@ -1,7 +1,8 @@
 # AGENTS.md — map of this repo
 
 Star Wars Sabacc: a browser card game. Lit + TypeScript UI, pure Effect rules engine,
-Vite build, Vitest tests. This file is a table of contents; follow the links.
+Vite build, Vitest tests. Two views of one engine: the classic Lit table (`index.html`)
+and a Three.js 3D table (`3d.html`). This file is a table of contents; follow the links.
 
 ## Start of every session
 
@@ -31,25 +32,27 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 
 | Command | Does |
 |---|---|
-| `npm run dev` | Vite dev server at http://localhost:5173 (`?seed=42` replays a game) |
+| `npm run dev` | Vite dev server at http://localhost:5173 (`?seed=42` replays a game; 3D at `/3d.html`) |
 | `npm run check` | Everything below, in order; the merge gate |
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
 | `npm run build` | Production build to `dist/` |
 | `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |
-| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone); screenshots + console errors in `.drive/` |
+| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone; `3d`, `3d-shift` for the 3D table); screenshots + console errors in `.drive/` |
 
 ## Invariants (enforced — don't work around them)
 
 1. `src/domain/` is pure: imports only `effect`; no `throw`, `async`, `Math.random`,
    `Date.now`, DOM, Lit. Randomness comes from Effect's `Random` service.
 2. Game state changes only through `applyCommand` in `src/domain/engine.ts`, run by
-   the store in `src/state/store.ts`. Never keep game state in a component or a timer.
+   the store in `src/state/store.ts`. Never keep game state in a component, a 3D
+   scene object or a timer.
 3. Changing a rule means editing the spec first, then the domain, then the rules copy
    in `index.html`. `test/unit/rules-copy.test.ts` catches drift.
 4. Every fixed bug gets a regression test that fails on the old behaviour.
 5. Browser tests run in real Chromium. No jsdom.
+6. `three` is imported only under `src/scene/`; the classic page never loads it.
 
 ## Skills used in this repo
 

@@ -20,6 +20,15 @@ describe("architecture rules", () => {
     expect(rules("src/state/x.ts", `import { Effect } from "effect"\nimport type { Game } from "../domain/model.js"\n`)).toEqual([])
   })
 
+  it("keeps Three.js in the scene layer and the scene out of the 2D components", () => {
+    expect(rules("src/scene/x.ts", `import * as THREE from "three"\nimport { CSS2DRenderer } from "three/addons/renderers/CSS2DRenderer.js"\nimport "../components/sabacc-controls.ts"\nimport { promptFor } from "../presentation/prompt.ts"\n`)).toEqual([])
+    expect(rules("src/components/x.ts", `import * as THREE from "three"\n`)).toContain("layer-package")
+    expect(rules("src/components/x.ts", `import "../scene/sabacc-3d.ts"\n`)).toContain("layer-edge")
+    expect(rules("src/presentation/x.ts", `import { html } from "lit"\n`)).toContain("layer-package")
+    expect(rules("src/presentation/x.ts", `import type { Store } from "../state/store.ts"\n`)).toContain("layer-edge")
+    expect(rules("src/components/x.ts", `import { describeEvent } from "../presentation/describe.ts"\n`)).toEqual([])
+  })
+
   it("keeps the domain pure", () => {
     expect(rules("src/domain/x.ts", "const r = Math.random()\n")).toContain("domain-no-math-random")
     expect(rules("src/domain/x.ts", "throw new Error('x')\n")).toContain("domain-no-throw")

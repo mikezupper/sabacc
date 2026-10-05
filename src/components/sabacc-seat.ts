@@ -4,7 +4,7 @@ import { customElement, property } from "lit/decorators.js"
 import { YOU, type Seat, type SeatResult } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { base, buttons } from "../styles/shared.ts"
-import { formatCredits } from "./describe.ts"
+import { formatCredits } from "../presentation/describe.ts"
 import "./sabacc-card.ts"
 
 export interface CardActionDetail {

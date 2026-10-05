@@ -12,14 +12,16 @@ export interface Violation {
   readonly message: string
 }
 
-type Layer = "domain" | "state" | "components" | "styles" | "entry" | "other"
+type Layer = "domain" | "state" | "presentation" | "components" | "scene" | "styles" | "entry" | "other"
 
 const layerOf = (path: string): Layer => {
   if (path.startsWith("src/domain/")) return "domain"
   if (path.startsWith("src/state/")) return "state"
+  if (path.startsWith("src/presentation/")) return "presentation"
   if (path.startsWith("src/components/")) return "components"
+  if (path.startsWith("src/scene/")) return "scene"
   if (path.startsWith("src/styles/")) return "styles"
-  if (path === "src/entry-client.ts") return "entry"
+  if (path === "src/entry-client.ts" || path === "src/entry-3d.ts") return "entry"
   return "other"
 }
 
@@ -27,9 +29,15 @@ const layerOf = (path: string): Layer => {
 const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray<Layer>; packages: ReadonlyArray<string> }> = {
   domain: { layers: ["domain"], packages: ["effect"] },
   state: { layers: ["state", "domain"], packages: ["effect", "@lit-labs/signals"] },
+  presentation: { layers: ["presentation", "domain"], packages: ["effect"] },
   components: {
-    layers: ["components", "state", "domain", "styles"],
+    layers: ["components", "state", "presentation", "domain", "styles"],
     packages: ["lit", "@lit-labs/signals", "effect"],
+  },
+  // The 3D view: Three.js lives only here, so the 2D page never ships it.
+  scene: {
+    layers: ["scene", "components", "state", "presentation", "domain", "styles"],
+    packages: ["three", "lit", "@lit-labs/signals", "effect"],
   },
   styles: { layers: ["styles"], packages: ["lit"] },
 }

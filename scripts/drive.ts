@@ -67,6 +67,64 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await page.locator("sabacc-table").getByRole("button").first().waitFor()
     await shot("restore-1-after-reload")
   },
+  // The 3D table (3d.html): deal, play a hand with real motion, pick and lock a card, call.
+  "3d": async (page, shot) => {
+    const settle = () => page.waitForTimeout(400)
+    const skip = async () => {
+      if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+      await settle()
+    }
+    await shot("3d-1-lobby")
+    await click(page, /Deal a hand/)
+    await page.waitForTimeout(1500)
+    await shot("3d-2-dealing")
+    let calls = 0
+    let locked = false
+    for (let i = 0; i < 60 && !(await inLobby(page)); i++) {
+      await skip()
+      if (await visible(page, /^Match/)) await click(page, /^Match/)
+      else if (await visible(page, "Check")) await click(page, "Check")
+      else if (await visible(page, "Gain a card")) {
+        if (!locked) {
+          // Pick a card (the 3D view lists your free cards), lock it, then gain.
+          await page.getByRole("group", { name: "Choose a card to lock or trade" }).getByRole("button").first().click()
+          await settle()
+          await shot("3d-3-picked")
+          await click(page, "Lock")
+          await settle()
+          locked = true
+        }
+        await click(page, "Gain a card")
+        await page.waitForTimeout(900)
+        await shot("3d-4-after-draw")
+      } else if (await visible(page, "Call the hand")) {
+        await click(page, calls++ === 0 ? "Keep playing" : "Call the hand")
+      }
+    }
+    await page.waitForTimeout(2500)
+    await skip()
+    await page.waitForTimeout(1500)
+    await shot("3d-5-showdown")
+  },
+  // A Sabacc Shift in 3D (seed 14 shifts after your second move): catch the cards mid-spin.
+  "3d-shift": async (page, shot) => {
+    await page.goto(page.url().replace(/seed=\d+/, "seed=14"))
+    await page.locator("sabacc-3d").getByRole("button").first().waitFor()
+    await click(page, /Deal a hand/)
+    for (let moves = 0; moves < 2; ) {
+      if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+      else if (await visible(page, /^Match/)) (await click(page, /^Match/), moves++)
+      else if (await visible(page, "Check")) (await click(page, "Check"), moves++)
+      else if (await visible(page, "Gain a card")) (await click(page, "Gain a card"), moves++)
+      await page.waitForTimeout(300)
+    }
+    const alert = page.getByRole("alert").filter({ hasText: "Sabacc Shift" })
+    await alert.waitFor({ timeout: 30_000 })
+    await page.waitForTimeout(450)
+    await shot("3d-shift-1-spinning")
+    await page.waitForTimeout(1300)
+    await shot("3d-shift-2-landed")
+  },
   rules: async (page, shot) => {
     await page.getByRole("link", { name: "Rules" }).click()
     await shot("rules-1")
@@ -75,20 +133,24 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
 
 const server = await preview({ preview: { port: 4173, strictPort: false } })
 const url = server.resolvedUrls?.local[0] ?? "http://localhost:4173/"
-const browser = await chromium.launch()
+// WebGL in headless Chromium: SwiftShader software rendering (the 3D path needs it).
+const browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader", "--use-angle=swiftshader"] })
 const report: Array<{ path: string; scheme: string; viewport: string; errors: ReadonlyArray<string> }> = []
 
 for (const [name, run] of Object.entries(paths)) {
   if (values.path !== "all" && values.path !== name) continue
   for (const scheme of ["dark", "light"] as const) {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
-      // Scripted paths use reduced motion (instant playback); `playback` keeps real motion.
-      const page = await browser.newPage({ colorScheme: scheme, viewport, reducedMotion: name === "playback" ? "no-preference" : "reduce" })
+      // Scripted paths use reduced motion (instant playback); `playback` and `3d` keep real motion.
+      const motion = name === "playback" || name.startsWith("3d")
+      const page = await browser.newPage({ colorScheme: scheme, viewport, reducedMotion: motion ? "no-preference" : "reduce" })
       const errors: Array<string> = []
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()))
       page.on("pageerror", (e) => errors.push(e.message))
-      await page.goto(`${url}?seed=${values.seed}`)
-      await page.locator("sabacc-table").getByRole("button").first().waitFor()
+      const threeD = name.startsWith("3d")
+      await page.goto(`${url}${threeD ? "3d.html" : ""}?seed=${values.seed}`)
+      await page.locator(threeD ? "sabacc-3d" : "sabacc-table").getByRole("button").first().waitFor()
+      if (threeD) await page.waitForTimeout(800)
       const tag = `${scheme}-${viewport.width}`
       await run(page, (name) => page.screenshot({ path: join(out, `${name}-${tag}.png`), fullPage: true }))
       report.push({ path: name, scheme, viewport: `${viewport.width}x${viewport.height}`, errors })

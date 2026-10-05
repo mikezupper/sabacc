@@ -2,7 +2,7 @@ import { css, html, LitElement } from "lit"
 import { customElement, property } from "lit/decorators.js"
 import type { GameEvent } from "../domain/model.ts"
 import { base } from "../styles/shared.ts"
-import { describeEvent } from "./describe.ts"
+import { describeEvent } from "../presentation/describe.ts"
 
 /** The game log as a native disclosure, newest entry first. */
 @customElement("sabacc-log")

@@ -1,7 +1,7 @@
 # Frontend conventions
 
-Applies to `src/components/`, `src/styles/` and `index.html`. Source skills:
-lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
+Applies to `src/components/`, `src/scene/`, `src/styles/`, `index.html` and `3d.html`.
+Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Lit
 
@@ -18,6 +18,23 @@ lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - Styles live in `static styles = css\`...\``, built on the shared tokens in
   `src/styles/shared.ts`.
 - Element names use the `sabacc-` prefix, one element per file, file name = element name.
+
+## 3D view (`src/scene/`, `3d.html`)
+
+- Share before you build: wording comes from `src/presentation/`, moves from
+  `<sabacc-controls pick>`, the log from `<sabacc-log>`. The scene draws; it never decides.
+- The scene is a function of the snapshot being shown plus the newest beat. Objects
+  are keyed by card id and ease towards their placement (`Mover`); one-off effects
+  (`Tweens`) only decorate a beat. A skipped effect must never leave the table wrong.
+- Placement math lives in `layout.ts` as plain numbers, so it's unit-tested in node.
+- Textures are drawn on canvases. Add no image or model assets without a reason
+  recorded in the exec plan.
+- Your cards are also listed as buttons in the controls (keyboard, screen readers);
+  clicking a 3D card is a shortcut to the same choice.
+- The stage sits between the status bar and the controls, never under them, so your
+  cards stay visible. Name plates are HTML (CSS2DRenderer), styled in `hud-styles.ts`.
+- Under `prefers-reduced-motion` every snapshot is drawn instantly and effects are
+  skipped. Without WebGL, show the fallback with a link to the classic table.
 
 ## HTML
 
@@ -43,6 +60,9 @@ lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - 233 KB / 76 KB gzip as of 2026-10-04, about three quarters Effect. The owner accepted
   this: no size budget in CI, no lazy loading of save/restore, no move off Effect.
   Re-measure only if a real-user performance problem appears.
+- The 3D page adds a ~620 KB / 160 KB gzip chunk (Three.js and the scene) that only
+  `3d.html` loads; the two pages share the Effect/Lit chunk. `chunkSizeWarningLimit`
+  is 700 KB for that reason.
 
 ## SEO
 
