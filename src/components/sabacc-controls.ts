@@ -53,6 +53,10 @@ export class SabaccControls extends LitElement {
   @property({ type: Boolean }) pick = false
   /** The chosen card id in `pick` mode. */
   @property({ attribute: false }) selected: number | undefined = undefined
+  /** Watching a multiplayer table: no moves to offer. */
+  @property({ type: Boolean }) spectator = false
+  /** Offer "New table" (solo, or the host of a multiplayer table). Set as a property. */
+  @property({ attribute: false }) newTable = true
   /** Draft amount for Bet / Raise to. */
   @state() private amount = MIN_BET
 
@@ -88,12 +92,13 @@ export class SabaccControls extends LitElement {
         <button @click=${() => this.dispatchEvent(new CustomEvent("skip", { bubbles: true, composed: true }))}>Skip ahead</button>
         <p class="hint">${this.pending} more ${this.pending === 1 ? "move" : "moves"} to show.</p>
       </div>`
+    if (this.spectator) return nothing
     if (game.phase._tag === "Lobby")
       return html`<div class="controls" role="group" aria-label="Table">
         <button class="primary" @click=${() => this.send(Command.StartHand())} ?disabled=${you.credits < BUY_IN}>
           Deal a hand (${formatCredits(BUY_IN)} in antes)
         </button>
-        <button class="push" @click=${() => this.send(Command.NewTable())}>New table</button>
+        ${this.newTable ? html`<button class="push" @click=${() => this.send(Command.NewTable())}>New table</button>` : nothing}
       </div>`
     const step = yourStep(game)
     if (step === undefined) return html`<p class="hint">${you.status._tag === "Active" ? "Waiting for the table…" : "You're out of this hand."}</p>`

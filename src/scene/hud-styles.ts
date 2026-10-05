@@ -128,6 +128,12 @@ export const hud = css`
   .mine { font-weight: 700; font-variant-numeric: tabular-nums; color: var(--positive); }
   .mine[data-bomb] { color: var(--negative); }
 
+  .naming {
+    grid-column: 1 / -1;
+    place-self: center;
+    inline-size: min(28rem, 100%);
+  }
+
   .fallback {
     grid-row: 2;
     grid-column: 1;

@@ -30,6 +30,9 @@ Every rule is tagged with its source. Full citations are in
 | Shift trigger | doubles on two six-sided dice (1 in 6) | `SHIFT_ODDS` | [F PG] |
 | Sabacc target | 23 | `SABACC` | [L] |
 | Round cap before the dealer must call | 10 | `MAX_ROUNDS` | [H] safety cap |
+| Multiplayer: seconds per decision | 45 | `TURN_SECONDS` | [H] owner |
+| Multiplayer: seconds a dropped seat waits for its player | 30 | `GRACE_SECONDS` | [H] owner |
+| Multiplayer: seconds between hands | 20 | `AUTO_DEAL_SECONDS` | [H] |
 
 ## The deck (76 cards) [L]
 
@@ -152,3 +155,23 @@ first player left of the dealer who is still in [H].
 Opponents use the same rules and see only their own cards. Their policy lives in
 `src/domain/ai.ts` and doesn't need to be in the player-facing copy, but it must never
 read hidden information (other players' cards, the deck order or future dice rolls).
+
+## Multiplayer tables [H]
+
+The same rules, played by up to 5 people at a private table on the server
+(`src/server/`); the AI plays every seat nobody has taken. Decided by the owner on
+2026-10-05 (see the [exec plan](../exec-plans/completed/2026-10-multiplayer.md)).
+
+1. **Seats.** 5 seats, as in solo play. Whoever opens the table sits first and is the
+   **host**; others join with the table's link and take the next free seat. When every
+   seat has a person, later visitors watch (spectators see no hidden cards).
+2. **Dealing.** The host deals the first hand. Later hands start automatically
+   20 seconds after the previous one ends; any player may deal sooner. Only the host
+   can start a **new table**, and only between hands.
+3. **Turn clock.** 45 seconds per decision. When it runs out the table plays the
+   safest move for you: check if nothing is owed, otherwise fold; stand when drawing;
+   let play continue in the call window.
+4. **Leaving.** If you disconnect, your seat waits 30 seconds, then the AI plays it
+   until you come back on the same browser (your seat is kept by a token).
+5. **Hidden information.** Each player's browser receives only their own cards, the
+   hands shown at a reveal, and public table state; never other hands or the deck.

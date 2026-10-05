@@ -2,7 +2,8 @@
 
 Star Wars Sabacc: a browser card game. Lit + TypeScript UI, pure Effect rules engine,
 Vite build, Vitest tests. Two views of one engine: the classic Lit table (`index.html`)
-and a Three.js 3D table (`3d.html`). This file is a table of contents; follow the links.
+and a Three.js 3D table (`3d.html`), each solo in the browser or multiplayer through a
+Node server (`src/server/`, Docker). This file is a table of contents; follow the links.
 
 ## Start of every session
 
@@ -27,19 +28,23 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | Current plan, decisions, progress | [docs/exec-plans/active/](docs/exec-plans/active/README.md) (done: [completed/](docs/exec-plans/completed/)) |
 | Known debt | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 | How good each area is | [docs/QUALITY_SCORE.md](docs/QUALITY_SCORE.md) |
+| Building the image, deploying, backups | [docs/DEPLOY.md](docs/DEPLOY.md) |
 
 ## Commands
 
 | Command | Does |
 |---|---|
 | `npm run dev` | Vite dev server at http://localhost:5173 (`?seed=42` replays a game; 3D at `/3d.html`) |
+| `npm run dev:server` | Multiplayer server on :8787 (Vite proxies `/api` and `/ws` to it) |
+| `npm start` | The built site + multiplayer server on :8080 (what the image runs) |
 | `npm run check` | Everything below, in order; the merge gate |
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
 | `npm run build` | Production build to `dist/` |
 | `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |
-| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone; `3d`, `3d-shift` for the 3D table); screenshots + console errors in `.drive/` |
+| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone; `3d`, `3d-shift`; `multiplayer`: real server, two browsers); screenshots + console errors in `.drive/` |
+| `./scripts/docker-build.sh` | Image for linux/amd64, tags `<sha>` + `latest`; `IMAGE=…` names it ([DEPLOY](docs/DEPLOY.md)) |
 
 ## Invariants (enforced — don't work around them)
 
@@ -53,6 +58,8 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 4. Every fixed bug gets a regression test that fails on the old behaviour.
 5. Browser tests run in real Chromium. No jsdom.
 6. `three` is imported only under `src/scene/`; the classic page never loads it.
+7. A browser receives only `viewFor` its seat: never another hand or the deck. No
+   registry, host or secret is committed (they come from `IMAGE=…` and `.env`).
 
 ## Skills used in this repo
 

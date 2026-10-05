@@ -67,6 +67,10 @@ export class SabaccSeat extends LitElement {
   @property({ type: Boolean, attribute: "can-lock" }) canLock = false
   @property({ type: Boolean, attribute: "can-trade" }) canTrade = false
   @property({ attribute: false }) result: SeatResult | undefined = undefined
+  /** Watching a multiplayer table: seat 0 is someone else's. */
+  @property({ type: Boolean }) spectating = false
+  /** Multiplayer: is the seat's person here, away, or is the AI playing it? */
+  @property() presence: "here" | "away" | "ai" | undefined = undefined
 
   override willUpdate(): void {
     this.toggleAttribute("data-winner", this.winner)
@@ -80,18 +84,19 @@ export class SabaccSeat extends LitElement {
   override render() {
     const seat = this.seat
     if (seat === undefined) return nothing
-    const mine = seat.index === YOU
+    const mine = seat.index === YOU && !this.spectating
     const show = this.reveal || mine
     const evaluation = this.result?.evaluation.pipe(Option.getOrUndefined) ?? (mine ? evaluate(seat.hand) : undefined)
     const headingId = `seat-${seat.index}`
     return html`<article aria-labelledby=${headingId}>
       <header>
-        <h3 id=${headingId}>${seat.name}</h3>
+        <h3 id=${headingId}>${mine ? "You" : seat.name}</h3>
         <span class="credits"><span class="visually-hidden">Credits: </span>${formatCredits(seat.credits)} cr</span>
       </header>
       <p class="badges">
         <span class="badge ${seat.status._tag === "Active" ? "" : "out"}">${statusLabel(seat)}</span>
         ${this.dealer ? html`<span class="badge dealer">Dealer</span>` : nothing}
+        ${this.presence === "away" ? html`<span class="badge out">Away</span>` : this.presence === "ai" ? html`<span class="badge out">AI</span>` : nothing}
         ${seat.roundBet > 0 ? html`<span class="badge bet">Bet ${formatCredits(seat.roundBet)}</span>` : nothing}
         ${this.winner ? html`<span class="badge winner">Winner</span>` : nothing}
         ${this.result && this.result.penalty > 0 ? html`<span class="badge penalty">Paid ${formatCredits(this.result.penalty)}</span>` : nothing}

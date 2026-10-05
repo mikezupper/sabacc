@@ -1,5 +1,6 @@
 // Schemas for saving and restoring a game (parse, don't validate). Anything read
-// back from storage is decoded here once; the rest of the code only sees a Game.
+// back from storage, or off the network, is decoded here once; the rest of the code
+// only sees a Game. src/protocol builds its messages from these pieces.
 import { Schema } from "effect"
 import { FACE_CARDS, SUITS } from "./cards.ts"
 import { OPPONENT_COUNT, STARTING_CREDITS } from "./constants.ts"
@@ -8,7 +9,7 @@ import type { Game } from "./model.ts"
 const Int = Schema.Int
 const Credits = Schema.Int.pipe(Schema.nonNegative())
 
-const CardSchema = Schema.Union(
+export const CardSchema = Schema.Union(
   Schema.TaggedStruct("Suited", { id: Int, suit: Schema.Literal(...SUITS), value: Schema.Int.pipe(Schema.between(1, 15)) }),
   Schema.TaggedStruct("Face", { id: Int, name: Schema.Literal(...FACE_CARDS.map((f) => f.name)), value: Int }),
 )
@@ -19,9 +20,12 @@ const SeatStatusSchema = Schema.Union(
   Schema.TaggedStruct("SittingOut", {}),
 )
 
+export const ControllerSchema = Schema.Literal("Human", "Ai")
+
 const SeatSchema = Schema.Struct({
   index: Int,
-  name: Schema.String,
+  name: Schema.String.pipe(Schema.maxLength(40)),
+  controller: ControllerSchema,
   credits: Credits,
   hand: Schema.Array(CardSchema),
   field: Schema.Array(Int),
@@ -44,7 +48,7 @@ const EvaluationSchema = Schema.Struct({
   rank: Int,
 })
 
-const HandResultSchema = Schema.Struct({
+export const HandResultSchema = Schema.Struct({
   handPot: Credits,
   winners: Schema.Array(Int),
   sabaccPotWon: Credits,
@@ -69,7 +73,8 @@ const cardIds = (g: Schema.Schema.Type<typeof GameShape>): ReadonlyArray<number>
   ...(g.phase._tag === "Playing" ? g.phase.deck.map((c) => c.id) : []),
 ]
 
-const GameShape = Schema.Struct({
+/** A game's shape without the whole-table invariants: what one player's view decodes as. */
+export const GameShape = Schema.Struct({
   seats: Schema.Array(SeatSchema).pipe(Schema.itemsCount(OPPONENT_COUNT + 1)),
   sabaccPot: Credits,
   dealer: Schema.Int.pipe(Schema.between(0, OPPONENT_COUNT)),
@@ -83,9 +88,27 @@ export const GameSchema: Schema.Schema<Game, Schema.Schema.Encoded<typeof GameSh
   Schema.filter((g) => g.seats.every((s, i) => s.index === i) || "seats are out of order"),
 )
 
-/** What goes into storage. Bump `version` when the Game shape changes. */
-export const SAVE_VERSION = 1
+/** What goes into storage. Bump `version` when the Game shape changes, and migrate. */
+export const SAVE_VERSION = 2
 export const SavedGame = Schema.Struct({ version: Schema.Literal(SAVE_VERSION), game: GameSchema })
 
-/** JSON text ⇄ SavedGame. */
-export const SavedGameJson = Schema.parseJson(SavedGame)
+const isRecord = (u: unknown): u is Readonly<Record<string, unknown>> => typeof u === "object" && u !== null
+
+/**
+ * v1 → v2: seats gained `controller` (multiplayer). A v1 table was always solo:
+ * seat 0 is the person, the rest the AI. Anything else passes through to be decoded.
+ */
+export const migrateSave = (u: unknown): unknown => {
+  if (!isRecord(u) || u["version"] !== 1 || !isRecord(u["game"])) return u
+  const game = u["game"]
+  const seats = Array.isArray(game["seats"]) ? game["seats"] : []
+  return {
+    version: SAVE_VERSION,
+    game: { ...game, seats: seats.map((s: unknown, i: number) => (isRecord(s) ? { ...s, controller: i === 0 ? "Human" : "Ai" } : s)) },
+  }
+}
+
+const Migrated = Schema.transform(Schema.Unknown, Schema.Unknown, { strict: true, decode: migrateSave, encode: (u) => u })
+
+/** JSON text ⇄ SavedGame, reading older saves through `migrateSave`. */
+export const SavedGameJson = Schema.compose(Schema.parseJson(Migrated), SavedGame, { strict: false })

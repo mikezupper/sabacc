@@ -16,5 +16,10 @@ export default defineConfig({
   },
   server: {
     allowedHosts: ["localhost", ".pages.dev", ".open-pool.com", ".video-miner.xyz"],
+    // Multiplayer in development: run `npm run dev:server` next to `npm run dev`.
+    proxy: {
+      "/api": "http://localhost:8787",
+      "/ws": { target: "ws://localhost:8787", ws: true },
+    },
   },
 })

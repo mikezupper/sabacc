@@ -13,6 +13,8 @@ import type { Store } from "../state/store.ts"
 import { base, buttons } from "../styles/shared.ts"
 import "../components/sabacc-controls.ts"
 import "../components/sabacc-log.ts"
+import "../components/sabacc-room.ts"
+import { tableContext } from "../components/table-context.ts"
 import { Stage, webglAvailable } from "./stage.ts"
 import { hud } from "./hud-styles.ts"
 import { sceneBeatDelay } from "./timing.ts"
@@ -85,7 +87,11 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
     const current = this.playback.revealed.at(-1)
     const fresh = current !== undefined && current !== this.lastBeat
     this.lastBeat = current
+    const ctx = this.store === undefined ? undefined : tableContext(this.store, game)
     this.stage.show({
+      spectator: ctx?.spectator ?? false,
+      revealed: ctx?.revealed ?? new Set(),
+      presence: ctx?.presence ?? (() => undefined),
       game,
       beat: fresh ? current.event : undefined,
       selected: this.selected,
@@ -103,6 +109,7 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
   }
 
   private pickable(game: Game): ReadonlySet<number> {
+    if (this.store?.room?.spectator.get() === true) return new Set()
     const step = this.playback.playing ? undefined : yourStep(game)
     const you = Option.getOrUndefined(seatAt(game, YOU))
     if (step?._tag !== "Drawing" || you === undefined) return new Set()
@@ -131,21 +138,27 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
   }
 
   private hud(store: Store, game: Game) {
+    const ctx = tableContext(store, game)
+    const room = html`<sabacc-room compact .store=${store}></sabacc-room>`
+    if (store.room?.connection.get() === "naming")
+      return html`<div class="overlay"><div class="naming">${room}</div></div>`
     const you = Option.getOrUndefined(seatAt(game, YOU))
     const p = Option.getOrUndefined(playing(game))
     const shifted = this.playback.revealed.some((b) => b.event._tag === "Shifted")
-    const evaluation = you !== undefined && you.hand.length > 0 ? evaluate(you.hand) : undefined
+    const evaluation = !ctx.spectator && you !== undefined && you.hand.length > 0 ? evaluate(you.hand) : undefined
     const prompt = promptFor({
       game,
       notice: store.notice.get(),
       beat: this.playback.playing ? this.playback.revealed.at(-1)?.event : undefined,
       welcomeBack: store.restored && store.log.get().length === 0,
+      who: ctx.narrator,
+      spectator: ctx.spectator,
     })
     return html`
       <header class="top">
         <slot name="title"></slot>
         <dl class="status">
-          <div><dt>Your credits</dt><dd>${formatCredits(you?.credits ?? 0)}</dd></div>
+          <div><dt>${ctx.spectator ? "Watching" : "Your credits"}</dt><dd>${ctx.spectator ? "—" : formatCredits(you?.credits ?? 0)}</dd></div>
           <div><dt>Hand pot</dt><dd>${formatCredits(p ? handPot(game) : 0)}</dd></div>
           <div><dt>Sabacc pot</dt><dd>${formatCredits(game.sabaccPot)}</dd></div>
           <div><dt>Round</dt><dd>${p ? p.round : "—"}</dd></div>
@@ -158,13 +171,16 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
       </header>
       <div class="overlay">
         ${shifted ? html`<p class="shift" role="alert">Sabacc Shift! Every card outside the interference field changed.</p>` : nothing}
-        <aside class="side" aria-label="Game log">
-          <sabacc-log .events=${store.log.get().slice(0, store.log.get().length - this.playback.pending)}></sabacc-log>
-          <p class="seed">
-            ${store.persistent ? "Saved in this browser (shared with the classic table)." : "Replay table: not saved."}
-            Seed <data value=${store.seed}>${store.seed}</data> ·
-            <a href=${`?seed=${store.seed}`}>Replay</a>
-          </p>
+        <aside class="side" aria-label="Table and game log">
+          ${room}
+          <sabacc-log .narrator=${ctx.narrator} .events=${store.log.get().slice(0, store.log.get().length - this.playback.pending)}></sabacc-log>
+          ${store.room === undefined
+            ? html`<p class="seed">
+                ${store.persistent ? "Saved in this browser (shared with the classic table)." : "Replay table: not saved."}
+                Seed <data value=${store.seed}>${store.seed}</data> ·
+                <a href=${`?seed=${store.seed}`}>Replay</a>
+              </p>`
+            : nothing}
         </aside>
       </div>
       <section class="panel" aria-label="Your seat">
@@ -174,6 +190,8 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
           : nothing}
         <sabacc-controls
           pick
+          ?spectator=${ctx.spectator}
+          .newTable=${ctx.canStartNewTable}
           .game=${game}
           .selected=${this.selected}
           ?playing=${this.playback.playing}

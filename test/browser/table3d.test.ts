@@ -106,7 +106,7 @@ describe("Board", () => {
   it("hands a shifted card's object to its replacement instead of discarding it", () => {
     // Regression: the object kept its old id, so the next snapshot discarded it.
     const board = new Board(5, { onShift: () => {} })
-    const view = { selected: undefined, hover: undefined, pickable: new Set<number>(), instant: false }
+    const view = { selected: undefined, hover: undefined, pickable: new Set<number>(), instant: false, spectator: false, revealed: new Set<number>(), presence: () => undefined }
     const base = newTable()
     const withHand = (cards: ReadonlyArray<Card>): Game => ({
       ...base,

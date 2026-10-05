@@ -36,6 +36,19 @@ Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - Under `prefers-reduced-motion` every snapshot is drawn instantly and effects are
   skipped. Without WebGL, show the fallback with a link to the classic table.
 
+## Multiplayer in the views
+
+- Views read the `Store` interface only; whether it's local or remote is the store's
+  business. `store.room` (present only at a multiplayer table) carries connection,
+  host, spectator and presence signals.
+- Seat 0 is "you" except for a spectator. Use `tableContext(store, game)` for the
+  narrator (names), spectator flag, presence and which hands the last reveal showed;
+  never assume seat 0 is yours or that a lobby reveal shows every hand.
+- `<sabacc-room>` is the one place for room UI: "Play with friends" in solo; name,
+  invite link, players and the turn clock at a table (`compact` folds it away in 3D).
+- Set boolean properties that default to `true` as properties (`.newTable=${…}`), not
+  `?attr=`: an absent attribute never turns a default `true` off.
+
 ## HTML
 
 - `index.html` is static and semantic: one `<h1>`, skip link, landmarks, and the full

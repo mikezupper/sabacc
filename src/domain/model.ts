@@ -2,8 +2,12 @@ import { Data, type Option } from "effect"
 import type { Card } from "./cards.ts"
 import type { Evaluation } from "./scoring.ts"
 
-/** Seat 0 is always you; seats 1…n are opponents, clockwise. */
+/** Seat 0 is always you; seats 1…n are opponents, clockwise. In multiplayer every
+ * player's view is rotated so that they are seat 0 (see `viewFor` in view.ts). */
 export const YOU = 0
+
+/** Who plays a seat: a person (the engine waits for their command) or the opponent policy. */
+export type Controller = "Human" | "Ai"
 
 export type SeatStatus = Data.TaggedEnum<{
   Active: {}
@@ -15,6 +19,7 @@ export const SeatStatus = Data.taggedEnum<SeatStatus>()
 export interface Seat {
   readonly index: number
   readonly name: string
+  readonly controller: Controller
   readonly credits: number
   readonly hand: ReadonlyArray<Card>
   /** Ids of hand cards in the interference field (face-down, never shifted). */
@@ -86,6 +91,8 @@ export type Command = Data.TaggedEnum<{
   Lock: { readonly cardId: number }
   CallHand: {}
   Pass: {}
+  /** Hand a seat to a person or to the AI (multiplayer: joins, disconnects). Sent by the server. */
+  Control: { readonly seat: number; readonly controller: Controller; readonly name: string }
 }>
 export const Command = Data.taggedEnum<Command>()
 
@@ -110,6 +117,8 @@ export type GameEvent = Data.TaggedEnum<{
   SuddenDemise: { readonly seat: number; readonly card: Card }
   Penalty: { readonly seat: number; readonly amount: number; readonly reason: "bombed out" | "failed call" }
   HandEnded: { readonly result: HandResult }
+  /** A seat changed hands: a player sat down, left, or the AI took over. */
+  Seated: { readonly seat: number; readonly controller: Controller; readonly name: string }
 }>
 export const GameEvent = Data.taggedEnum<GameEvent>()
 

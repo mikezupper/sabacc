@@ -29,6 +29,17 @@ describe("architecture rules", () => {
     expect(rules("src/components/x.ts", `import { describeEvent } from "../presentation/describe.ts"\n`)).toEqual([])
   })
 
+  it("keeps the server off browser code, and the browser off the server", () => {
+    expect(rules("src/server/x.ts", `import { DatabaseSync } from "node:sqlite"\nimport { HttpRouter } from "@effect/platform"\nimport { applyCommand } from "../domain/engine.ts"\nimport { ClientMessage } from "../protocol/messages.ts"\n`)).toEqual([])
+    expect(rules("src/server/x.ts", `import { html } from "lit"\n`)).toContain("layer-package")
+    expect(rules("src/server/x.ts", `import { createStore } from "../state/store.ts"\n`)).toContain("layer-edge")
+    expect(rules("src/state/x.ts", `import { ServerMessage } from "../protocol/messages.ts"\n`)).toEqual([])
+    expect(rules("src/components/x.ts", `import "../server/room.ts"\n`)).toContain("layer-edge")
+    expect(rules("src/protocol/x.ts", `import { DatabaseSync } from "node:sqlite"\n`)).toContain("layer-package")
+    expect(rules("src/server/main.ts", `import { NodeRuntime } from "@effect/platform-node"\nNodeRuntime.runMain(program)\n`)).toEqual([])
+    expect(rules("src/server/room.ts", `Effect.runFork(e)\n`)).toContain("single-runtime")
+  })
+
   it("keeps the domain pure", () => {
     expect(rules("src/domain/x.ts", "const r = Math.random()\n")).toContain("domain-no-math-random")
     expect(rules("src/domain/x.ts", "throw new Error('x')\n")).toContain("domain-no-throw")

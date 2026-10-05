@@ -2,12 +2,16 @@
 // as the 2D seat cards, with the same wording. Styled by <sabacc-3d>.
 import { Option } from "effect"
 import { html, nothing, render } from "lit"
-import { YOU, type Seat, type SeatResult } from "../domain/model.ts"
+import type { Seat, SeatResult } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { formatCredits } from "../presentation/describe.ts"
 
 export interface PlateData {
   readonly seat: Seat
+  /** This seat is the viewer's (never for a spectator). */
+  readonly mine: boolean
+  /** Multiplayer: is the seat's person here, away, or is the AI playing it? */
+  readonly presence: "here" | "away" | "ai" | undefined
   readonly dealer: boolean
   readonly active: boolean
   readonly revealed: boolean
@@ -20,7 +24,7 @@ const status = (s: Seat): string =>
 
 export const renderPlate = (el: HTMLElement, d: PlateData): void => {
   const { seat } = d
-  const mine = seat.index === YOU
+  const mine = d.mine
   const evaluation = d.result?.evaluation.pipe(Option.getOrUndefined) ?? (mine && seat.hand.length > 0 ? evaluate(seat.hand) : undefined)
   const showHand = (mine || d.revealed) && evaluation !== undefined
   el.toggleAttribute("data-active", d.active)
@@ -28,10 +32,11 @@ export const renderPlate = (el: HTMLElement, d: PlateData): void => {
   el.toggleAttribute("data-out", seat.status._tag !== "Active")
   el.toggleAttribute("data-mine", mine)
   render(
-    html`<strong>${seat.name}</strong>
+    html`<strong>${mine ? "You" : seat.name}</strong>
       <span class="credits">${formatCredits(seat.credits)} cr</span>
       <span class="tags">
         ${d.dealer ? html`<span class="tag dealer">Dealer</span>` : nothing}
+        ${d.presence === "away" ? html`<span class="tag">Away</span>` : d.presence === "ai" ? html`<span class="tag">AI</span>` : nothing}
         ${status(seat) !== "" ? html`<span class="tag">${status(seat)}</span>` : nothing}
         ${seat.roundBet > 0 ? html`<span class="tag bet">Bet ${formatCredits(seat.roundBet)}</span>` : nothing}
         ${d.winner ? html`<span class="tag win">Winner</span>` : nothing}

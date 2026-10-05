@@ -8,6 +8,7 @@ export type Playing = Extract<Phase, { readonly _tag: "Playing" }>
 const seat = (index: number, name: string): Seat => ({
   index,
   name,
+  controller: index === 0 ? "Human" : "Ai",
   credits: STARTING_CREDITS,
   hand: [],
   field: [],
@@ -28,6 +29,7 @@ export const playing = (game: Game): Option.Option<Playing> =>
   game.phase._tag === "Playing" ? Option.some(game.phase) : Option.none()
 
 export const isIn = (s: Seat): boolean => s.status._tag === "Active"
+export const isHuman = (s: Seat): boolean => s.controller === "Human"
 export const isAllIn = (s: Seat): boolean => isIn(s) && s.credits === 0
 
 export const seatAt = (game: Game, index: number): Option.Option<Seat> => Array.get(game.seats, index)

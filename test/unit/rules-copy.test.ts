@@ -30,6 +30,9 @@ describe("rules copy matches the domain", () => {
     ["deck size", "76 cards"],
     ["suits", SUITS.slice(0, -1).join(", ") + " and " + SUITS.at(-1)],
     ["ranked cards", "Commander (12), Mistress (13), Master (14) and Ace (15)"],
+    ["multiplayer seats", `Up to ${C.OPPONENT_COUNT + 1} people can play`],
+    ["turn clock", `${C.TURN_SECONDS} seconds for each decision`],
+    ["disconnect grace", `your seat waits ${C.GRACE_SECONDS} seconds`],
   ])("states the %s", (_, phrase) => {
     expect(rules).toContain(phrase)
   })

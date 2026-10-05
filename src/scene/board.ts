@@ -24,6 +24,12 @@ export interface BoardView {
   readonly pickable: ReadonlySet<number>
   /** Reduced motion or skip: jump straight to the snapshot. */
   readonly instant: boolean
+  /** Watching a multiplayer table: seat 0 isn't yours. */
+  readonly spectator: boolean
+  /** Seats whose hands the last reveal showed. */
+  readonly revealed: ReadonlySet<number>
+  /** Multiplayer: is a seat's person here, away, or is the AI playing it? */
+  readonly presence: (seat: number) => "here" | "away" | "ai" | undefined
 }
 
 export interface BoardHooks {
@@ -115,7 +121,7 @@ export class Board {
   show(view: BoardView): void {
     const { game, beat } = view
     const last = lastHandOf(game)
-    const revealed = last?.revealed ?? false
+    const shown = view.revealed
     const slots = slotsOf(game)
     const wanted = new Set(slots.map((s) => s.card.id))
 
@@ -131,7 +137,7 @@ export class Board {
         this.views.delete(old.id)
         this.views.set(s.card.id, old)
         old.rekey(s.card.id)
-        this.spin(old, s.card, s.seat === YOU || revealed, view.instant)
+        this.spin(old, s.card, (s.seat === YOU && !view.spectator) || shown.has(s.seat), view.instant)
       }
     for (const v of gone) this.discard(v, view.instant)
 
@@ -139,8 +145,9 @@ export class Board {
     const deckTop = at(SPOTS.deck, this.deck.height + 0.02)
     for (const s of slots) {
       const seat = game.seats[s.seat]
-      const mine = s.seat === YOU
+      const mine = s.seat === YOU && !view.spectator
       const out = seat !== undefined && seat.status._tag !== "Active"
+      const revealed = shown.has(s.seat)
       const faceUp = mine || revealed
       let v = this.views.get(s.card.id)
       if (v === undefined) {
@@ -191,8 +198,10 @@ export class Board {
         seat: s,
         dealer: p !== undefined && game.dealer === s.index,
         active: toAct === s.index,
-        revealed: last?.revealed ?? false,
+        revealed: view.revealed.has(s.index),
         result: last?.seats.find((r) => r.seat === s.index),
+        mine: s.index === YOU && !view.spectator,
+        presence: view.presence(s.index),
         winner: last?.winners.includes(s.index) ?? false,
       })
     })

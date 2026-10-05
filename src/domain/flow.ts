@@ -1,13 +1,13 @@
 // Spec "A hand, step by step": the loop that moves a hand forward until it needs
-// your input or ends. Opponents act here; your commands are applied in engine.ts.
+// a person's input or ends. AI seats act here; people's commands are applied in engine.ts.
 import { Effect, Either, Option, Random } from "effect"
 import { decideBet, decideCall, decideDraw } from "./ai.ts"
 import { DESIGNS, makeCard, type Card } from "./cards.ts"
 import { CALL_FROM_ROUND, DICE_SIDES, MAX_ROUNDS } from "./constants.ts"
 import { applyBet, bettingIsMoot, openBetting } from "./betting.ts"
-import { GameEvent, Step, YOU, type Game, type Seat, type Transition } from "./model.ts"
+import { GameEvent, Step, type Game, type Seat, type Transition } from "./model.ts"
 import { lastStanding, showdown } from "./showdown.ts"
-import { append, deckSize, handPot, inHand, order, playing, seatAt, setStep, takeCard, followedBy, transition, updatePlaying, updateSeat, type Playing } from "./table.ts"
+import { append, deckSize, handPot, inHand, isHuman, order, playing, seatAt, setStep, takeCard, followedBy, transition, updatePlaying, updateSeat, type Playing } from "./table.ts"
 
 export type Flow = Effect.Effect<Transition>
 
@@ -71,7 +71,7 @@ export const callHand = (t: Transition, seat: number, forced: boolean): Flow =>
 const nextRound = (t: Transition, p: Playing): Flow => {
   const round = p.round + 1
   if (round > MAX_ROUNDS) {
-    const caller = inHand(t.game).some((s) => s.index === t.game.dealer) ? t.game.dealer : (order(t.game)[0] ?? YOU)
+    const caller = inHand(t.game).some((s) => s.index === t.game.dealer) ? t.game.dealer : (order(t.game)[0] ?? t.game.dealer)
     return callHand(t, caller, true)
   }
   const g = openBetting(updatePlaying(t.game, (q) => ({ ...q, round })))
@@ -106,7 +106,7 @@ const opponentDraw = (t: Transition, seat: Seat): Flow => {
 
 // ── The loop ─────────────────────────────────────────────────────────────────
 
-/** Run opponents and automatic steps until it's your turn or the hand is over. */
+/** Run AI seats and automatic steps until a person must act or the hand is over. */
 export const advance = (t: Transition): Flow =>
   Effect.suspend(() => {
     const p = Option.getOrUndefined(playing(t.game))
@@ -123,16 +123,16 @@ export const advance = (t: Transition): Flow =>
           return advance({ ...t, game: setStep(t.game, Step.Drawing({ toAct: order(t.game), lockedThisTurn: false })) })
         if (seat.status._tag !== "Active" || seat.credits === 0)
           return advance({ ...t, game: setStep(t.game, { ...step, toAct: step.toAct.slice(1) }) })
-        return seat.index === YOU ? Effect.succeed(t) : opponentBet(t, seat, step.currentBet, step.minRaise)
+        return isHuman(seat) ? Effect.succeed(t) : opponentBet(t, seat, step.currentBet, step.minRaise)
       case "Drawing":
         if (seat === undefined)
           return Effect.flatMap(shiftCheck(t.game), (s) =>
             advance(followedBy(t, { ...s, game: setStep(s.game, Step.CallWindow({ toAct: p.round >= CALL_FROM_ROUND ? order(s.game) : [] })) })),
           )
-        return seat.index === YOU ? Effect.succeed(t) : opponentDraw(t, seat)
+        return isHuman(seat) ? Effect.succeed(t) : opponentDraw(t, seat)
       case "CallWindow":
         if (seat === undefined) return nextRound(t, p)
-        if (seat.index === YOU) return Effect.succeed(t)
+        if (isHuman(seat)) return Effect.succeed(t)
         return decideCall(seat, p.round)
           ? callHand(t, seat.index, false)
           : advance(append(t, setStep(t.game, { ...step, toAct: step.toAct.slice(1) }), GameEvent.Passed({ seat: seat.index })))

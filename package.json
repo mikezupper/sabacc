@@ -8,8 +8,10 @@
   },
   "scripts": {
     "dev": "vite",
+    "dev:server": "PORT=8787 DATA_DIR=.data node --watch src/server/main.ts",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "node src/server/main.ts",
     "typecheck": "tsc --noEmit",
     "lint:arch": "tsx scripts/check-architecture.ts",
     "test": "vitest run",
@@ -20,6 +22,8 @@
     "sim": "tsx scripts/sim.ts"
   },
   "dependencies": {
+    "@effect/platform": "~0.97.2",
+    "@effect/platform-node": "~0.108.2",
     "@lit-labs/signals": "~0.3.0",
     "effect": "~3.22.0",
     "lit": "^3.3.0",

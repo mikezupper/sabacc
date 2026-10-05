@@ -1,10 +1,12 @@
 # Architecture
 
-A client-rendered Sabacc game with two views of one engine. A pure Effect domain core
-holds every rule; a signals store runs it; Lit components render it as a 2D table
-(`index.html`, static, semantic and crawlable), and a Three.js scene renders it as a 3D
-table (`3d.html`). Both views share the domain, the store, beat playback, the wording
-and the action controls; only the drawing differs.
+A Sabacc game with two views of one engine, played solo in the browser or with friends
+through a server. A pure Effect domain core holds every rule. Lit components render it
+as a 2D table (`index.html`, static, semantic and crawlable) and a Three.js scene as a
+3D table (`3d.html`); both share the store, beat playback, the wording and the controls.
+Solo, the store runs the engine in the browser. Multiplayer, a Node server
+(`src/server/`) runs the same engine per table and the store follows it over a
+WebSocket; the views can't tell the difference.
 
 ## Layers and allowed imports
 
@@ -19,24 +21,31 @@ entry-client.ts (2D)            entry-3d.ts (3D)       app wiring: ?seed, store,
 components/  ◄────────────────────────┘                Lit elements (shared controls, log)
       │
 presentation/                                          wording, prompt, beat playback (no framework)
-state/                                                 signals store + the single place Effects run
+state/                                                 stores (local engine, or remote over WebSocket)
       │
-domain/                                                pure rules: types, scoring, AI policy, engine
+protocol/                                              wire messages as Schemas (browser ⇄ server)
+      │
+domain/                                                pure rules: engine, AI, viewFor (what a player may see)
       │
 effect                                                 (standard library)
+
+server/  (Node only)  → protocol/, domain/             rooms, timers, SQLite, HTTP + WebSocket
 ```
 
 | Layer | May import | Must not import |
 |---|---|---|
 | `src/domain/` | `effect`, other `src/domain/` files | `lit`, `@lit-labs/*`, `src/state`, `src/components`, DOM globals |
-| `src/state/` | `effect`, `@lit-labs/signals`, `src/domain` | `lit`, `src/components` |
+| `src/protocol/` | `effect`, `src/domain` | everything else |
+| `src/state/` | `effect`, `@lit-labs/signals`, `src/protocol`, `src/domain` | `lit`, `src/components` |
+| `src/server/` | `effect`, `@effect/platform`, `@effect/platform-node`, `node:*`, `src/protocol`, `src/domain` | `lit`, `three`, browser layers |
 | `src/presentation/` | `effect`, `src/domain` | `lit`, `three`, `src/state`, `src/components` |
 | `src/components/` | `lit`, `@lit-labs/signals`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
 | `src/scene/` | `three`, `lit`, `@lit-labs/signals`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
 | `src/styles/` | `lit` | everything else |
 | `src/entry-client.ts`, `src/entry-3d.ts` | anything | — |
 
-Three.js is imported only under `src/scene/`, so the 2D page never ships it.
+Three.js is imported only under `src/scene/`, so the 2D page never ships it. Effects are
+run only in `src/state/store.ts` (browser) and `src/server/main.ts` (server).
 
 Extra rules for `src/domain/` (also enforced by `lint:arch`):
 no `throw`, `try`, `async`/`await`, `Math.random`, `Date.now`/`new Date`, `any`,
@@ -76,6 +85,25 @@ never leaves the table wrong. A shift gives new card ids, so the board hands the
 card's object to the new card in the same seat and spins it over. Textures are drawn
 on canvases (`textures.ts`): no image assets. Without WebGL the page shows a link to
 the classic table. Both pages share the saved table.
+
+## Multiplayer
+
+1. `POST /api/rooms` opens a table (`src/server/rooms.ts`); its link is `?room=CODE` on
+   either page. `bootStore` (`src/state/boot.ts`) then makes a **remote store**
+   (`src/state/remote-store.ts`) with the same signals as the local one.
+2. The browser sends `Join` (name + seat token) and `Act` (a player command) as
+   Schema-checked JSON (`src/protocol/messages.ts`). The server decodes every message.
+3. Each table is a `Room` (`src/server/room.ts`): it runs `applyCommand(game, command,
+   seat)` with its own `Random`, one command at a time under a lock, saves to SQLite and
+   sends every connection **its own view**: `transitionFor(t, seat)`
+   (`src/domain/view.ts`) hides other hands and the deck and rotates seats so each
+   player is seat 0 (`YOU`). That's why the views needed no multiplayer logic beyond
+   names, spectators and the room panel (`<sabacc-room>`).
+4. Seats are human or AI (`Seat.controller`). `advance` stops at human seats and plays
+   AI ones. The server's `Control` command hands a seat over: on join, and 30 s after a
+   disconnect. Timers (turn clock, grace, next deal) are fibers that re-check a version
+   number before acting, so a late timer never applies a stale move.
+5. Spectators get an unrotated view with every hand hidden.
 
 ## Determinism
 
@@ -121,3 +149,11 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | 3D page | `3d.html`, `src/entry-3d.ts` |
 | Design tokens and global CSS | `src/styles/global.css`, `src/styles/shared.ts` |
 | Static page, rules copy, SEO head | `index.html` |
+| Per-player views (redaction, seat rotation) | `src/domain/view.ts` |
+| Wire messages | `src/protocol/messages.ts` |
+| Remote store, boot by `?room=` | `src/state/remote-store.ts`, `src/state/boot.ts` |
+| Room panel (invite, players, clock) | `src/components/sabacc-room.ts` |
+| A table on the server (seats, timers, broadcast) | `src/server/room.ts` |
+| Rooms registry, SQLite, HTTP + WebSocket | `src/server/rooms.ts`, `src/server/db.ts`, `src/server/http.ts` |
+| Server entry, settings | `src/server/main.ts`, `src/server/app.ts`, `src/server/config.ts` |
+| Image, compose, deploy | `Dockerfile`, `compose.yml`, `scripts/docker-*.sh`, [docs/DEPLOY.md](docs/DEPLOY.md) |

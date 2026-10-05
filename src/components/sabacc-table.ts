@@ -2,14 +2,16 @@ import { SignalWatcher } from "@lit-labs/signals"
 import { Option } from "effect"
 import { css, html, LitElement, nothing } from "lit"
 import { customElement, property } from "lit/decorators.js"
-import { Command, YOU, type Game } from "../domain/model.ts"
-import { deckSize, handPot, playing, seatAt } from "../domain/table.ts"
-import { formatCredits, seatName } from "../presentation/describe.ts"
+import { Command, YOU, type Game, type HandResult, type Seat, type SeatResult, type Step } from "../domain/model.ts"
+import { deckSize, handPot, playing, seatAt, type Playing } from "../domain/table.ts"
+import { formatCredits } from "../presentation/describe.ts"
 import { promptFor, yourStep } from "../presentation/prompt.ts"
 import type { Store } from "../state/store.ts"
 import { base } from "../styles/shared.ts"
 import { Playback } from "./playback.ts"
 import "./sabacc-controls.ts"
+import "./sabacc-room.ts"
+import { tableContext, type TableContext } from "./table-context.ts"
 import "./sabacc-log.ts"
 import "./sabacc-seat.ts"
 import type { CardActionDetail } from "./sabacc-seat.ts"
@@ -70,7 +72,7 @@ export class SabaccTable extends SignalWatcher(LitElement) {
     this.send(e.detail.action === "lock" ? Command.Lock({ cardId: e.detail.cardId }) : Command.Trade({ cardId: e.detail.cardId }))
   }
 
-  private prompt(game: Game): string {
+  private prompt(game: Game, ctx: TableContext): string {
     const store = this.store
     if (store === undefined) return ""
     return promptFor({
@@ -79,7 +81,23 @@ export class SabaccTable extends SignalWatcher(LitElement) {
       beat: this.playback.playing ? this.playback.revealed.at(-1)?.event : undefined,
       // Until anything happens after a reload, say the table came back from storage.
       welcomeBack: store.restored && store.log.get().length === 0,
+      who: ctx.narrator,
+      spectator: ctx.spectator,
     })
+  }
+
+  private seatView(game: Game, ctx: TableContext, index: number) {
+    const lastHand = game.phase._tag === "Lobby" ? Option.getOrUndefined(game.phase.lastHand) : undefined
+    const p = Option.getOrUndefined(playing(game))
+    return html`<sabacc-seat
+      .seat=${game.seats[index]}
+      ?reveal=${ctx.revealed.has(index)}
+      ?winner=${lastHand?.winners.includes(index) ?? false}
+      ?dealer=${p !== undefined && game.dealer === index}
+      ?spectating=${ctx.spectator}
+      .presence=${ctx.presence(index)}
+      .result=${lastHand?.seats.find((s) => s.seat === index)}
+    ></sabacc-seat>`
   }
 
   override render() {
@@ -87,71 +105,95 @@ export class SabaccTable extends SignalWatcher(LitElement) {
     if (store === undefined) return nothing
     // While a playback runs, draw the snapshot being shown; otherwise the live game.
     const game = this.playback.frame ?? store.game.get()
+    const ctx = tableContext(store, game)
     const you = Option.getOrUndefined(seatAt(game, YOU))
     const p = Option.getOrUndefined(playing(game))
-    const step = yourStep(game)
+    const step = ctx.spectator ? undefined : yourStep(game)
     const lastHand = game.phase._tag === "Lobby" ? Option.getOrUndefined(game.phase.lastHand) : undefined
     const result = (seat: number) => lastHand?.seats.find((s) => s.seat === seat)
     const shifted = this.playback.revealed.some((b) => b.event._tag === "Shifted")
     const drawing = step?._tag === "Drawing"
+    const others = game.seats.filter((s) => ctx.spectator || s.index !== YOU)
+    const seated = store.room === undefined || store.room.connection.get() !== "naming"
 
     return html`<div class="stack">
+      <sabacc-room .store=${store}></sabacc-room>
+      ${seated ? this.table(game, ctx, { you, p, step, lastHand, result, shifted, drawing, others }) : nothing}
+      <p class="seed">
+        ${store.room !== undefined
+          ? html`Multiplayer table <strong>${store.room.code}</strong>: the server keeps the game. <a href="/">Play solo</a>`
+          : html`${store.persistent ? "Your table is saved in this browser." : "Replay table: not saved."}
+            Seed <data value=${store.seed}>${store.seed}</data> · <a href=${`?seed=${store.seed}`}>Replay from this seed</a>`}
+      </p>
+    </div>`
+  }
+
+  private table(
+    game: Game,
+    ctx: TableContext,
+    v: {
+      you: Seat | undefined
+      p: Playing | undefined
+      step: Step | undefined
+      lastHand: HandResult | undefined
+      result: (seat: number) => SeatResult | undefined
+      shifted: boolean
+      drawing: boolean
+      others: ReadonlyArray<Seat>
+    },
+  ) {
+    const store = this.store
+    if (store === undefined) return nothing
+    const { you, p, step, lastHand, result, shifted, drawing, others } = v
+    return html`
       <dl class="status">
-        <div><dt>Your credits</dt><dd>${formatCredits(you?.credits ?? 0)}</dd></div>
+        <div><dt>${ctx.spectator ? "Watching" : "Your credits"}</dt><dd>${ctx.spectator ? "—" : formatCredits(you?.credits ?? 0)}</dd></div>
         <div><dt>Hand pot</dt><dd>${formatCredits(p ? handPot(game) : 0)}</dd></div>
         <div><dt>Sabacc pot</dt><dd>${formatCredits(game.sabaccPot)}</dd></div>
         <div><dt>Round</dt><dd>${p ? p.round : "—"}</dd></div>
-        <div><dt>Dealer</dt><dd>${p ? seatName(game.dealer) : "—"}</dd></div>
+        <div><dt>Dealer</dt><dd>${p ? ctx.narrator.name(game.dealer) : "—"}</dd></div>
         <div><dt>Deck</dt><dd>${deckSize(game)}</dd></div>
       </dl>
 
       ${shifted ? html`<p class="shift" role="alert">Sabacc Shift! Every card outside the interference field changed.</p>` : nothing}
-      <output aria-live="polite" ?data-error=${Option.isSome(store.notice.get())}>${this.prompt(game)}</output>
+      <output aria-live="polite" ?data-error=${Option.isSome(store.notice.get())}>${this.prompt(game, ctx)}</output>
 
-      <section class="stack" aria-labelledby="you-heading" @card-action=${this.onCardAction}>
+      ${ctx.spectator ? nothing : html`<section class="stack" aria-labelledby="you-heading" @card-action=${this.onCardAction}>
         <h2 id="you-heading" class="visually-hidden">Your seat</h2>
         <sabacc-seat
           .seat=${you}
-          ?reveal=${lastHand?.revealed ?? false}
+          ?reveal=${ctx.revealed.has(YOU)}
           ?winner=${lastHand?.winners.includes(YOU) ?? false}
           ?dealer=${p !== undefined && game.dealer === YOU}
           ?card-actions=${drawing}
           ?can-lock=${drawing && step?._tag === "Drawing" && !step.lockedThisTurn}
           ?can-trade=${drawing && deckSize(game) > 0}
           .result=${result(YOU)}
+          .presence=${ctx.presence(YOU)}
         ></sabacc-seat>
         <sabacc-controls
           .game=${game}
           ?playing=${this.playback.playing}
           .pending=${this.playback.pending}
+          .newTable=${ctx.canStartNewTable}
           @command=${(e: CustomEvent<Command>) => this.send(e.detail)}
           @skip=${() => this.playback.skip()}
         ></sabacc-controls>
-      </section>
+      </section>`}
 
       <section class="stack" aria-labelledby="opponents-heading">
-        <h2 id="opponents-heading">Opponents</h2>
+        <h2 id="opponents-heading">${ctx.spectator ? "Players" : "Opponents"}</h2>
         <ul class="opponents">
-          ${game.seats.filter((s) => s.index !== YOU).map(
-            (s) => html`<li>
-              <sabacc-seat
-                .seat=${s}
-                ?reveal=${lastHand?.revealed ?? false}
-                ?winner=${lastHand?.winners.includes(s.index) ?? false}
-                ?dealer=${p !== undefined && game.dealer === s.index}
-                .result=${result(s.index)}
-              ></sabacc-seat>
-            </li>`,
-          )}
+          ${others.map((s) => html`<li>${this.seatView(game, ctx, s.index)}</li>`)}
         </ul>
       </section>
+      ${ctx.spectator
+        ? html`<sabacc-controls ?spectator=${true} ?playing=${this.playback.playing} .pending=${this.playback.pending} .game=${game}
+            @skip=${() => this.playback.skip()}></sabacc-controls>`
+        : nothing}
 
-      <sabacc-log .events=${store.log.get().slice(0, store.log.get().length - this.playback.pending)}></sabacc-log>
-      <p class="seed">
-        ${store.persistent ? "Your table is saved in this browser." : "Replay table: not saved."}
-        Seed <data value=${store.seed}>${store.seed}</data> · <a href=${`?seed=${store.seed}`}>Replay from this seed</a>
-      </p>
-    </div>`
+      <sabacc-log .narrator=${ctx.narrator} .events=${store.log.get().slice(0, store.log.get().length - this.playback.pending)}></sabacc-log>
+    `
   }
 }
 

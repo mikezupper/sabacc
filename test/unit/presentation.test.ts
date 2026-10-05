@@ -75,6 +75,18 @@ describe("promptFor (shared status line)", () => {
     expect(text).toBe("Too small.")
   })
 
+  it("names the person you're waiting for at a multiplayer table", async () => {
+    const { narratorFor } = await import("../../src/presentation/describe.ts")
+    const { setStep } = await import("../../src/domain/table.ts")
+    const { Phase, Step } = await import("../../src/domain/model.ts")
+    const base = newTable()
+    const game = setStep(
+      { ...base, seats: base.seats.map((s) => (s.index === 2 ? { ...s, name: "Lando", controller: "Human" as const } : s)), phase: Phase.Playing({ deck: [], round: 1, step: Step.Drawing({ toAct: [], lockedThisTurn: false }), nextCardId: 0 }) },
+      Step.Betting({ toAct: [2, 0], currentBet: 0, minRaise: 100 }),
+    )
+    expect(promptFor({ game, notice: Option.none(), who: narratorFor(game, 0) })).toBe("Waiting for Lando…")
+  })
+
   it("tells you what to do on your turn", () => {
     const store = createStore(42)
     store.dispatch(Command.StartHand())

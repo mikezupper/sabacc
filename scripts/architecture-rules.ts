@@ -12,10 +12,12 @@ export interface Violation {
   readonly message: string
 }
 
-type Layer = "domain" | "state" | "presentation" | "components" | "scene" | "styles" | "entry" | "other"
+type Layer = "domain" | "protocol" | "state" | "presentation" | "components" | "scene" | "server" | "styles" | "entry" | "other"
 
 const layerOf = (path: string): Layer => {
   if (path.startsWith("src/domain/")) return "domain"
+  if (path.startsWith("src/protocol/")) return "protocol"
+  if (path.startsWith("src/server/")) return "server"
   if (path.startsWith("src/state/")) return "state"
   if (path.startsWith("src/presentation/")) return "presentation"
   if (path.startsWith("src/components/")) return "components"
@@ -28,7 +30,11 @@ const layerOf = (path: string): Layer => {
 // Allowed targets per layer: internal layers plus package names (prefix match).
 const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray<Layer>; packages: ReadonlyArray<string> }> = {
   domain: { layers: ["domain"], packages: ["effect"] },
-  state: { layers: ["state", "domain"], packages: ["effect", "@lit-labs/signals"] },
+  // The wire format shared by browser and server.
+  protocol: { layers: ["protocol", "domain"], packages: ["effect"] },
+  state: { layers: ["state", "protocol", "domain"], packages: ["effect", "@lit-labs/signals"] },
+  // The multiplayer server (Node). Never imports browser code.
+  server: { layers: ["server", "protocol", "domain"], packages: ["effect", "@effect/platform", "@effect/platform-node", "node:"] },
   presentation: { layers: ["presentation", "domain"], packages: ["effect"] },
   components: {
     layers: ["components", "state", "presentation", "domain", "styles"],
@@ -71,6 +77,9 @@ const domainBans: ReadonlyArray<{ pattern: RegExp; rule: string; fix: string }> 
   { pattern: /[\w)\]]!\.|[\w)\]]!\)|[\w)\]]!;/, rule: "domain-no-non-null", fix: "handle absence with Option or a pattern match instead of a non-null assertion" },
 ]
 
+/** The only places Effects are run: the browser store and the server's entry point. */
+const RUNTIMES = ["src/state/store.ts", "src/server/main.ts"]
+
 const MAX_DOMAIN_LINES = 300
 const MAX_SRC_LINES = 400
 const MAX_AGENTS_LINES = 120
@@ -96,7 +105,7 @@ export const checkSources = (files: ReadonlyArray<SourceFile>): ReadonlyArray<Vi
         if (!rules.layers.includes(target)) {
           out.push({ path: f.path, rule: "layer-edge", message: `${layer} must not import ${target} ("${spec}"). Allowed: ${rules.layers.join(", ")}. See ARCHITECTURE.md "Layers and allowed imports"` })
         }
-      } else if (!rules.packages.some((p) => spec === p || spec.startsWith(p + "/"))) {
+      } else if (!rules.packages.some((p) => spec === p || spec.startsWith(p.endsWith(":") ? p : p + "/"))) {
         out.push({ path: f.path, rule: "layer-package", message: `${layer} must not import package "${spec}". Allowed: ${rules.packages.join(", ")}. See ARCHITECTURE.md` })
       }
     }
@@ -109,8 +118,8 @@ export const checkSources = (files: ReadonlyArray<SourceFile>): ReadonlyArray<Vi
     if (/export\s+(const|function|let|var)\s+then\b|export\s*\{[^}]*\bthen\b[^}]*\}/.test(f.text)) {
       out.push({ path: f.path, rule: "no-then-export", message: "don't export `then`: a module namespace with `then` is treated as a promise when awaited or dynamically imported; rename it" })
     }
-    if (f.text.match(/Effect\.run(Sync|Promise|Fork|Callback)/) && f.path !== "src/state/store.ts") {
-      out.push({ path: f.path, rule: "single-runtime", message: "Effects run only in src/state/store.ts; return the Effect and let the store run it" })
+    if (f.text.match(/Effect\.run(Sync|Promise|Fork|Callback)|runMain\(/) && !RUNTIMES.includes(f.path)) {
+      out.push({ path: f.path, rule: "single-runtime", message: "Effects run only in src/state/store.ts (browser) and src/server/main.ts (server); return the Effect and let those run it" })
     }
   }
   return out

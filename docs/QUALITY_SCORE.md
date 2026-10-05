@@ -9,9 +9,11 @@ B = tested; C = works, untested; D = known defects; F = missing.
 | Store (`src/state`) | A | Store tests + 6 persistence tests (mid-hand restore, round-trip property, corrupt/tampered/old-version saves rejected); single-runtime rule enforced | — |
 | UI components | B | 11 Chromium tests (betting, field lock/trade, call + reveal, notices, shift alert, motion, card names, playback, skip, restore greeting); `npm run drive` 20 runs incl. playback and reload, 0 console errors | — |
 | 3D table (`src/scene`) | B | 5 Chromium tests with real WebGL (draw, deal, pick + lock, full hand to reveal, shift hand-over regression); 8 layout unit tests; shared playback and prompt tests; `npm run drive` paths `3d` and `3d-shift` (8 runs), 0 console errors | Visual look reviewed by screenshot only; no GPU perf budget |
+| Multiplayer server (`src/server`) | B | 11 integration tests over real WebSockets (seating, hidden cards, a full hand, out-of-turn and spectator refusals, grace → AI → rejoin, turn clock, bad input, restart with seats kept, no lock-up when players leave between hands); timer move rules; image built and run (healthy, backup) | No load test; single process (fine for one VPS) |
+| Multiplayer client and views | B | 5 remote-store tests (name, token, snapshot/update, moves, refusals, reconnect, closed room); `viewFor` no-leak property test (40 random games × 3 viewers); drive `multiplayer` path (classic + 3D players, real server), 0 console errors | Spectator and reconnect UI checked in tests, not in drive screenshots |
 | Static page, rules copy, SEO | A | Legends rules as static HTML; rules-copy test (25 checks incl. every face card); title, description, OG, favicon | Canonical URL pending a domain (bead) |
 | Accessibility | B | Landmarks, skip link, named cards, labelled bet input, `<output aria-live>`, shift `role=alert`, `<details>`, 44px targets, reduced motion | No automated axe audit yet |
 | Harness (docs, lint, CI) | A | AGENTS.md map, docs/ system of record, lint:arch with remediation messages, CI, beads, drive script | — |
 | Performance | B | 233 KB JS / 76 KB gzip (2026-10-04); owner accepts this size: no CI budget, save/restore stays in the main bundle, the engine stays on Effect | — |
 
-Last graded: 2026-10-04, after the 3D table.
+Last graded: 2026-10-05, after multiplayer.

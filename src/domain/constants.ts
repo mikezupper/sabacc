@@ -28,3 +28,10 @@ export const MAX_ROUNDS = 10
 
 /** Sudden demise deals at most this many extra cards before a tie is split. */
 export const SUDDEN_DEMISE_CARDS = 2
+
+/** Multiplayer (spec "Multiplayer tables"): seconds per decision before the safe move is played. */
+export const TURN_SECONDS = 45
+/** Multiplayer: seconds a dropped player's seat waits before the AI plays it. */
+export const GRACE_SECONDS = 30
+/** Multiplayer: seconds between hands before the next one is dealt. */
+export const AUTO_DEAL_SECONDS = 20

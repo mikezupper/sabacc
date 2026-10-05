@@ -193,6 +193,34 @@ describe("saved table (sabacc-3nc)", () => {
   })
 })
 
+describe("multiplayer table (sabacc-kiq)", () => {
+  it("offers New table only to the host", async () => {
+    // Regression: `?new-table=false` left the property's default `true` in place.
+    const { signal } = await import("@lit-labs/signals")
+    const asGuest = (host: boolean) => ({
+      ...createStore(1),
+      room: {
+        code: "ABC234",
+        connection: signal("open" as const),
+        spectator: signal(false),
+        host: signal(host),
+        presence: signal({ connected: [true, false, false, false, false], deadline: undefined }),
+        problem: signal<string | undefined>(undefined),
+        name: signal("Han"),
+        join: () => {},
+      },
+    })
+    for (const host of [true, false]) {
+      const el = document.createElement("sabacc-table") as SabaccTable
+      el.store = asGuest(host) as unknown as Store
+      document.body.append(el)
+      await settle(el)
+      expect(button(el, "New table") !== undefined).toBe(host)
+      el.remove()
+    }
+  })
+})
+
 describe("<sabacc-card>", () => {
   it("names ranked and face cards in full, and marks field cards", async () => {
     const master = document.createElement("sabacc-card")

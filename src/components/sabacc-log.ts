@@ -2,7 +2,7 @@ import { css, html, LitElement } from "lit"
 import { customElement, property } from "lit/decorators.js"
 import type { GameEvent } from "../domain/model.ts"
 import { base } from "../styles/shared.ts"
-import { describeEvent } from "../presentation/describe.ts"
+import { describeEvent, solo, type Narrator } from "../presentation/describe.ts"
 
 /** The game log as a native disclosure, newest entry first. */
 @customElement("sabacc-log")
@@ -37,12 +37,14 @@ export class SabaccLog extends LitElement {
   ]
 
   @property({ attribute: false }) events: ReadonlyArray<GameEvent> = []
+  /** Names for the narration (multiplayer); solo by default. */
+  @property({ attribute: false }) narrator: Narrator = solo
 
   override render() {
     return html`<details>
       <summary>Game log (${this.events.length})</summary>
       <ol reversed>
-        ${[...this.events].reverse().map((e) => html`<li>${describeEvent(e)}</li>`)}
+        ${[...this.events].reverse().map((e) => html`<li>${describeEvent(e, this.narrator)}</li>`)}
       </ol>
     </details>`
   }

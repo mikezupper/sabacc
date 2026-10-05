@@ -4,7 +4,9 @@
 //
 //   npm run build && npm run drive              # all paths, seed 42
 //   npm run drive -- --seed 7 --path fold        # one path, another seed
-import { mkdirSync, writeFileSync } from "node:fs"
+import { spawn } from "node:child_process"
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { parseArgs } from "node:util"
 import { chromium, type Page } from "playwright"
@@ -125,6 +127,7 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await page.waitForTimeout(1300)
     await shot("3d-shift-2-landed")
   },
+  multiplayer: async () => {}, // runs separately below: it needs the game server and two browsers
   rules: async (page, shot) => {
     await page.getByRole("link", { name: "Rules" }).click()
     await shot("rules-1")
@@ -139,6 +142,7 @@ const report: Array<{ path: string; scheme: string; viewport: string; errors: Re
 
 for (const [name, run] of Object.entries(paths)) {
   if (values.path !== "all" && values.path !== name) continue
+  if (name === "multiplayer") continue
   for (const scheme of ["dark", "light"] as const) {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
       // Scripted paths use reduced motion (instant playback); `playback` and `3d` keep real motion.
@@ -156,6 +160,73 @@ for (const [name, run] of Object.entries(paths)) {
       report.push({ path: name, scheme, viewport: `${viewport.width}x${viewport.height}`, errors })
       await page.close()
     }
+  }
+}
+
+// Multiplayer: the real game server on the build, two players in two browsers — Han on
+// the classic table (desktop, dark), Lando on the 3D table (phone, light).
+if (values.path === "all" || values.path === "multiplayer") {
+  const port = 4190
+  const game = spawn(process.execPath, ["src/server/main.ts"], {
+    env: { ...process.env, PORT: String(port), STATIC_DIR: "dist", DATA_DIR: mkdtempSync(join(tmpdir(), "sabacc-drive-")), AUTO_DEAL_SECONDS: "600" },
+    stdio: "ignore",
+  })
+  const base = `http://localhost:${port}`
+  for (let i = 0; i < 50; i++) {
+    if (await fetch(`${base}/healthz`).then((r) => r.ok, () => false)) break
+    await new Promise((r) => setTimeout(r, 200))
+  }
+  const errors: Array<string> = []
+  const open = async (scheme: "dark" | "light", viewport: { width: number; height: number }) => {
+    const page = await browser.newPage({ colorScheme: scheme, viewport })
+    page.on("console", (m) => m.type() === "error" && errors.push(m.text()))
+    page.on("pageerror", (e) => errors.push(e.message))
+    return page
+  }
+  const shot = (page: Page, name: string) => page.screenshot({ path: join(out, `mp-${name}.png`), fullPage: true })
+  const han = await open("dark", { width: 1280, height: 900 })
+  const lando = await open("light", { width: 390, height: 844 })
+  try {
+    await han.goto(`${base}/`)
+    await click(han, "Play with friends")
+    await han.getByLabel("Your name").fill("Han")
+    await click(han, "Join the table")
+    await han.getByText(/Table [A-Z0-9]{6}/).first().waitFor()
+    const room = new URL(han.url()).searchParams.get("room") ?? ""
+    await lando.goto(`${base}/3d.html?room=${room}`)
+    await lando.getByLabel("Your name").fill("Lando")
+    await click(lando, "Join the table")
+    await lando.locator("sabacc-3d").getByRole("button").first().waitFor()
+    await han.waitForTimeout(800)
+    await shot(han, "1-han-lobby")
+    await shot(lando, "1-lando-lobby-3d")
+    await click(han, /Deal a hand/)
+    // Each plays safe moves on their turn until the hand ends.
+    const moves = ["Skip ahead", "Check", /^Match/, "Stand", "Call the hand"] as const
+    let shotMid = false
+    for (let i = 0; i < 120; i++) {
+      for (const page of [han, lando]) {
+        for (const name of moves)
+          if (await visible(page, name)) {
+            // Playback can finish (and the button vanish) between the check and the click.
+            await page.getByRole("button", { name }).first().click({ timeout: 1500 }).catch(() => undefined)
+            break
+          }
+      }
+      if (!shotMid && (await visible(han, "Stand"))) {
+        await shot(han, "2-han-drawing")
+        await shot(lando, "2-lando-3d")
+        shotMid = true
+      }
+      if ((await inLobby(han)) && (await visible(lando, /Deal a hand/))) break
+      await han.waitForTimeout(250)
+    }
+    await han.waitForTimeout(1500)
+    await shot(han, "3-han-result")
+    await shot(lando, "3-lando-result-3d")
+  } finally {
+    report.push({ path: "multiplayer", scheme: "dark+light", viewport: "1280+390", errors })
+    game.kill()
   }
 }
 

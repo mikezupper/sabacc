@@ -1,0 +1,13 @@
+node_modules
+dist
+.drive
+.data
+.git
+.beads
+.dolt
+.idea
+.env
+compose.override.yml
+test/browser/__screenshots__
+.vitest-attachments
+pnpm-lock.yaml
