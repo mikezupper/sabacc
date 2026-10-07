@@ -1,3 +1,4 @@
+import { settled } from "@gyral/core"
 import { afterEach, describe, expect, it } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
@@ -25,11 +26,13 @@ const mount = async (seed = 42) => {
   return { el, store }
 }
 
+/** Gyral moves run as commands, then Lit renders: wait for both, finish playback, wait again. */
 const settle = async (el: Sabacc3d) => {
+  await settled()
   await el.updateComplete
   el.playback.skip()
   await el.updateComplete
-  await controls(el).updateComplete
+  await settled()
   await frame()
 }
 

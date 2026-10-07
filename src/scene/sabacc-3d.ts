@@ -1,9 +1,9 @@
 import { SignalWatcher } from "@lit-labs/signals"
 import { Option } from "effect"
-import { html, LitElement, nothing } from "lit"
+import { html, LitElement, nothing, type PropertyValues } from "lit"
 import { customElement, property, query, state } from "lit/decorators.js"
 import { OPPONENT_COUNT } from "../domain/constants.ts"
-import { YOU, type Beat, type Command, type Game } from "../domain/model.ts"
+import { YOU, type Beat, type Game } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { deckSize, handPot, playing, seatAt } from "../domain/table.ts"
 import { formatCredits } from "../presentation/describe.ts"
@@ -11,7 +11,9 @@ import { BeatPlayer, prefersReducedMotion } from "../presentation/playback.ts"
 import { promptFor, yourStep } from "../presentation/prompt.ts"
 import type { Store } from "../state/store.ts"
 import { base, buttons } from "../styles/shared.ts"
+import type { ControlsOutput } from "../components/sabacc-controls.ts"
 import "../components/sabacc-controls.ts"
+import { provideTable } from "../components/table-driver.ts"
 import "../components/sabacc-log.ts"
 import "../components/sabacc-room.ts"
 import { tableContext } from "../components/table-context.ts"
@@ -54,7 +56,14 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
     this.drawn = false
   }
 
-  override willUpdate(): void {
+  private unprovide: (() => void) | undefined
+
+  override willUpdate(changed: PropertyValues<this>): void {
+    // Gyral components below (the controls) reach the store through the table driver.
+    if (changed.has("store") && this.store !== undefined) {
+      this.unprovide?.()
+      this.unprovide = provideTable(this, this.store)
+    }
     if (this.store !== undefined) this.playback.sync(this.store.last.get())
     const game = this.shown()
     if (game !== undefined && this.selected !== undefined && !this.pickable(game).has(this.selected)) this.selected = undefined
@@ -116,9 +125,10 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
     return new Set(you.hand.filter((c) => !you.field.includes(c.id)).map((c) => c.id))
   }
 
-  private send(command: Command): void {
-    this.selected = undefined
-    this.store?.dispatch(command)
+  /** Outputs from the Gyral controls (a Lit parent hears them as a DOM event). */
+  private readonly onControls = (e: CustomEvent<ControlsOutput>): void => {
+    if (e.detail._tag === "Skip") this.playback.skip()
+    else this.selected = e.detail.cardId
   }
 
   override render() {
@@ -191,14 +201,12 @@ export class Sabacc3d extends SignalWatcher(LitElement) {
         <sabacc-controls
           pick
           ?spectator=${ctx.spectator}
-          .newTable=${ctx.canStartNewTable}
+          ?hide-new-table=${!ctx.canStartNewTable}
           .game=${game}
           .selected=${this.selected}
           ?playing=${this.playback.playing}
           .pending=${this.playback.pending}
-          @command=${(e: CustomEvent<Command>) => this.send(e.detail)}
-          @card-select=${(e: CustomEvent<number | undefined>) => (this.selected = e.detail)}
-          @skip=${() => this.playback.skip()}
+          @gyral-output=${this.onControls}
         ></sabacc-controls>
       </section>
     `

@@ -1,3 +1,4 @@
+import { settled } from "@gyral/core"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
@@ -16,11 +17,14 @@ const mount = async (seed = 42) => {
 
 /** Let the table render the final state: finish any playback, then wait for children. */
 const settle = async (el: SabaccTable, finishPlayback = true) => {
+  // A Gyral control's move runs as a command, then the Lit table renders.
+  await settled()
   await el.updateComplete
   if (finishPlayback) {
     el.playback.skip()
     await el.updateComplete
   }
+  await settled()
   const kids = [...(el.shadowRoot?.querySelectorAll("sabacc-seat, sabacc-log, sabacc-controls") ?? [])]
   await Promise.all(kids.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
   const cards = kids.flatMap((c) => [...(c.shadowRoot?.querySelectorAll("sabacc-card") ?? [])])
