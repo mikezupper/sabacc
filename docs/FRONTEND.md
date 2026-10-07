@@ -41,9 +41,11 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 - `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
 - Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
   Chromium: let the store's change arrive (a few microtasks), then `await settled()`.
-- Imperative widgets (the Three.js stage) sit behind a hook (`defineHook`). Hooks have no
-  cleanup, so such a widget must notice it was detached (the stage checks `isConnected`)
-  and report back through a DOM event an intent listens for.
+- An imperative widget with a lifecycle (the Three.js stage) is its own plain custom
+  element: one property set from the view (`.view=${…}`), setup in `connectedCallback`,
+  teardown in `disconnectedCallback`, and DOM events an intent listens for
+  (`data-intent-on="stage-event"`). Small behaviours on one element can be hooks
+  (`defineHook`). This is the Gyral team's recommended pattern.
 
 ## 3D view (`src/scene/`, `3d.html`)
 

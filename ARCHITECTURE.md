@@ -81,11 +81,12 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files â
 
 ## The 3D view
 
-`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) is a Gyral component like the classic table;
-its view puts a hook (`src/scene/stage-hook.ts`) on the stage element, which mounts the
-Three.js `Stage` and hands it each snapshot to draw (`Stage.show`). The stage reports
-picks, hovers and a missing WebGL as one DOM event (`stage-event`) that an intent turns
-into a message, and shuts itself down when its element leaves the page.
+`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) is a Gyral component like the classic table.
+Its view renders `<sabacc-stage>` (`src/scene/sabacc-stage.ts`), a plain custom element
+that owns the Three.js `Stage`: it builds it when connected, hands it each snapshot set
+on its `.view` property (`Stage.show`), and tears it down in `disconnectedCallback`. The
+stage reports picks, hovers and a missing WebGL as one DOM event (`stage-event`) that an
+intent turns into a message.
 `Board` (`src/scene/board.ts`) keeps one object per card id and moves it towards the
 placement `layout.ts` computes for that snapshot, so dealing, trading, folding and the
 reveal animate without any game logic in the scene. A new beat adds one-off effects
@@ -152,7 +153,7 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | Store â‡„ components (snapshot, moves, join) | `src/components/table-driver.ts`, provided in `src/entry-table.ts` |
 | Page address, navigation, clipboard, clock, reduced motion | `src/components/browser-drivers.ts` |
 | Prop schemas (identity-preserving) | `src/components/prop-schemas.ts` |
-| Stage hook, 3D name plates | `src/scene/stage-hook.ts`, `src/scene/plates.ts` |
+| Stage element, 3D name plates | `src/scene/sabacc-stage.ts`, `src/scene/plates.ts` |
 | Action controls (both views) | `src/components/sabacc-controls.ts` |
 | Seed and store start-up (both pages) | `src/state/boot.ts` |
 | 3D element, HUD | `src/scene/sabacc-3d.ts`, `src/scene/hud-styles.ts` |

@@ -1,6 +1,6 @@
 // The 3D table. Same model as the classic table (it watches the table store and plays
 // each transition back beat by beat, with longer delays so cards can fly and dice can
-// tumble), drawn by the Three.js stage through a hook, with the shared HUD pieces
+// tumble), drawn by the Three.js stage (<sabacc-stage>), with the shared HUD pieces
 // (prompt, <sabacc-controls>, <sabacc-room>, <sabacc-log>) around it.
 import { Option } from "effect"
 import { child, define, html, nothing, type Command as GyralCommand } from "@gyral/core"
@@ -31,7 +31,8 @@ import "../components/sabacc-room.ts"
 import { tableContext } from "../components/table-context.ts"
 import { watchTable, type TableSnapshot } from "../components/table-driver.ts"
 import { hud } from "./hud-styles.ts"
-import { stageHook, type StageEvent } from "./stage-hook.ts"
+import { type StageEvent, type StageView } from "./sabacc-stage.ts"
+import "./sabacc-stage.ts"
 import { sceneBeatDelay } from "./timing.ts"
 
 export interface State {
@@ -183,12 +184,12 @@ export const Sabacc3d = define<State, Msg>("sabacc-3d", {
     // While a playback runs, draw the snapshot being shown; otherwise the live game.
     const game = table === undefined ? undefined : frame(s.playback, table.game)
     const ctx = table === undefined || game === undefined ? undefined : tableContext(table, game)
-    const stage =
+    const stage: StageView | undefined =
       game === undefined || ctx === undefined
-        ? nothing
-        : stageHook({
+        ? undefined
+        : {
             seats: game.seats.length || OPPONENT_COUNT + 1,
-            view: {
+            board: {
               game,
               beat: revealed(s.playback).at(-1),
               reduce: s.reduce,
@@ -200,10 +201,10 @@ export const Sabacc3d = define<State, Msg>("sabacc-3d", {
               presence: ctx.presence,
             },
             reset: s.reset,
-          })
+          }
     return html`
-      <!-- The stage reports picks, hovers and a missing WebGL as "stage-event" (stage-hook.ts). -->
-      <div class="stage" role="img" aria-label="3D Sabacc table. Your moves and the table's state are in the panels." data-intent=${i.Stage} data-intent-on="stage-event" ${stage}></div>
+      <!-- The stage reports picks, hovers and a missing WebGL as "stage-event" (sabacc-stage.ts). -->
+      <sabacc-stage class="stage" role="img" aria-label="3D Sabacc table. Your moves and the table's state are in the panels." .view=${stage} data-intent=${i.Stage} data-intent-on="stage-event"></sabacc-stage>
       ${s.failed
         ? html`<div class="fallback" role="alert">
             <p>This browser can't draw the 3D table (WebGL is unavailable).</p>
