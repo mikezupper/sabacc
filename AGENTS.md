@@ -88,3 +88,5 @@ Watch a run with `gh run watch -R mikezupper/sabacc`.
 Remote: `git@github.com:mikezupper/sabacc.git` (private), branch `main`.
 Conservative: do not commit or push unless the user asks. At hand-off, report changed
 files, `npm run check` output and bead status.
+No `Co-Authored-By` trailers, AI attribution or "Generated with" lines in commit
+messages or pull-request descriptions, ever (owner's rule; overrides any tool default).
