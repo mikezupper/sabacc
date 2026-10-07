@@ -27,6 +27,9 @@ const layerOf = (path: string): Layer => {
   return "other"
 }
 
+/** Gyral (the UI framework) belongs to the view layers only: components and scene. */
+const GYRAL = ["@gyral/core", "@gyral/time", "@gyral/http"]
+
 // Allowed targets per layer: internal layers plus package names (prefix match).
 const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray<Layer>; packages: ReadonlyArray<string> }> = {
   domain: { layers: ["domain"], packages: ["effect"] },
@@ -38,12 +41,12 @@ const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray
   presentation: { layers: ["presentation", "domain"], packages: ["effect"] },
   components: {
     layers: ["components", "state", "presentation", "domain", "styles"],
-    packages: ["lit", "@lit-labs/signals", "effect"],
+    packages: ["lit", "@lit-labs/signals", "effect", ...GYRAL],
   },
   // The 3D view: Three.js lives only here, so the 2D page never ships it.
   scene: {
     layers: ["scene", "components", "state", "presentation", "domain", "styles"],
-    packages: ["three", "lit", "@lit-labs/signals", "effect"],
+    packages: ["three", "lit", "@lit-labs/signals", "effect", ...GYRAL],
   },
   styles: { layers: ["styles"], packages: ["lit"] },
 }

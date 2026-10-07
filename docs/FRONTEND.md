@@ -36,6 +36,27 @@ Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - Under `prefers-reduced-motion` every snapshot is drawn instantly and effects are
   skipped. Without WebGL, show the fallback with a link to the classic table.
 
+## Gyral (moving from Lit; plan: [exec-plans/active/2026-10-gyral-0.3.md](exec-plans/active/2026-10-gyral-0.3.md))
+
+New and converted components are [Gyral](https://gyral.dev) 0.3 `define()` components;
+the remaining Lit elements go away as the plan proceeds. Source skill: `gyral` (read from
+the Gyral checkout's `skills/gyral/`).
+
+- One loop per component: `intent` parses events into tagged messages, `update` has a pure
+  reducer for every tag, `view` is a pure template that **names intents**
+  (`data-intent=${i.Check}`) and never holds closures.
+- Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`,
+  never from `lit`, in a Gyral component. Lists use `each` with pure rows and a module-level
+  `const i = intents<Msg>()`. Form state uses attributes (`value=${…}`), never `.value=`.
+- Game state stays in the store: components reach it through the table driver
+  (`TableChanged` in, `dispatch` commands out), never by calling the store directly from a
+  reducer. Timers are `@gyral/time` commands; HTTP is `@gyral/http`.
+- Template rules are checked three times: ESLint in the editor (`npm run lint:templates`),
+  the runtime in dev and tests, and the compiler in `vite build` (a break fails the build).
+- `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
+- Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
+  Chromium and `await settled()` before asserting.
+
 ## Multiplayer in the views
 
 - Views read the `Store` interface only; whether it's local or remote is the store's

@@ -40,6 +40,13 @@ describe("architecture rules", () => {
     expect(rules("src/server/room.ts", `Effect.runFork(e)\n`)).toContain("single-runtime")
   })
 
+  it("keeps Gyral in the view layers", () => {
+    expect(rules("src/components/x.ts", `import { define, html } from "@gyral/core"\nimport { delay } from "@gyral/time"\n`)).toEqual([])
+    expect(rules("src/scene/x.ts", `import { defineHook } from "@gyral/core"\n`)).toEqual([])
+    for (const layer of ["domain", "protocol", "state", "server", "presentation"])
+      expect(rules(`src/${layer}/x.ts`, `import { define } from "@gyral/core"\n`)).toContain("layer-package")
+  })
+
   it("keeps the domain pure", () => {
     expect(rules("src/domain/x.ts", "const r = Math.random()\n")).toContain("domain-no-math-random")
     expect(rules("src/domain/x.ts", "throw new Error('x')\n")).toContain("domain-no-throw")
