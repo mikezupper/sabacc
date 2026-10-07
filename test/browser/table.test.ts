@@ -1,5 +1,5 @@
 import { settled } from "@gyral/core"
-import { Signal } from "signal-polyfill"
+import { cell } from "../../src/state/cell.ts"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
@@ -210,7 +210,7 @@ describe("saved table (sabacc-3nc)", () => {
 describe("multiplayer table (sabacc-kiq)", () => {
   it("offers New table only to the host", async () => {
     // Regression: `?new-table=false` left the property's default `true` in place.
-    const signal = <T>(v: T) => new Signal.State(v)
+    const signal = <T>(v: T) => cell(v)
     const asGuest = (host: boolean) => ({
       ...createStore(1),
       room: {

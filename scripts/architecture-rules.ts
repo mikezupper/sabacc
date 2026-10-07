@@ -35,13 +35,13 @@ const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray
   domain: { layers: ["domain"], packages: ["effect"] },
   // The wire format shared by browser and server.
   protocol: { layers: ["protocol", "domain"], packages: ["effect"] },
-  state: { layers: ["state", "protocol", "domain"], packages: ["effect", "signal-polyfill"] },
+  state: { layers: ["state", "protocol", "domain"], packages: ["effect"] },
   // The multiplayer server (Node). Never imports browser code.
   server: { layers: ["server", "protocol", "domain"], packages: ["effect", "@effect/platform", "@effect/platform-node", "node:"] },
   presentation: { layers: ["presentation", "domain"], packages: ["effect"] },
   components: {
     layers: ["components", "state", "presentation", "domain", "styles"],
-    packages: ["effect", ...GYRAL, "signal-polyfill"],
+    packages: ["effect", ...GYRAL],
   },
   // The 3D view: Three.js lives only here, so the 2D page never ships it.
   scene: {

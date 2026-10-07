@@ -31,7 +31,6 @@
     "@gyral/http": "file:vendor/gyral/0.3.0/gyral-http-0.3.0.tgz",
     "@gyral/time": "file:vendor/gyral/0.3.0/gyral-time-0.3.0.tgz",
     "effect": "~3.22.0",
-    "signal-polyfill": "~0.2.2",
     "three": "^0.186.1"
   },
   "devDependencies": {

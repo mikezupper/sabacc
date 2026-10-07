@@ -97,9 +97,10 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 
 ## Bundle
 
-- What each page loads (all chunks it reaches, gzip), 2026-10-07 after the move to Gyral:
-  classic page 278 KB / **90.4 KB** (Lit, before: 84.5 KB), 3D page 898 KB / **246.5 KB**
-  (before: 239.3 KB). Most of it is Effect; Gyral costs about 6–7 KB more than Lit did.
+- What each page loads (all chunks it reaches, gzip), 2026-10-07: classic page 270 KB /
+  **88.0 KB** (Lit, before Gyral: 84.5 KB), 3D page 890 KB / **244.0 KB** (Lit: 239.3 KB).
+  Most of it is Effect. The stores use our own `Cell` (`src/state/cell.ts`) instead of a
+  signals library (−2.4 KB), and Vite's modulepreload polyfill is off.
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
 - The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only

@@ -14,6 +14,6 @@ B = tested; C = works, untested; D = known defects; F = missing.
 | Static page, rules copy, SEO | A | Legends rules as static HTML; rules-copy test (25 checks incl. every face card); title, description, OG, favicon | Canonical URL pending a domain (bead) |
 | Accessibility | B | Landmarks, skip link, named cards, labelled bet input, `<output aria-live>`, shift `role=alert`, `<details>`, 44px targets, reduced motion | No automated axe audit yet |
 | Harness (docs, lint, CI) | A | AGENTS.md map, docs/ system of record, lint:arch with remediation messages, CI, beads, drive script | — |
-| Performance | B | Per page, gzip (2026-10-07, Gyral 0.3, Vite 8): classic 90.4 KB (was 84.5 with Lit), 3D 246.5 KB (was 239.3); mostly Effect; owner accepts this size: no CI budget, the engine stays on Effect | Gyral costs ~6–7 KB gzip more than Lit did |
+| Performance | B | Per page, gzip (2026-10-07, Gyral 0.3, Vite 8): classic 88.0 KB (84.5 with Lit), 3D 244.0 KB (239.3 with Lit); mostly Effect; owner accepts this size: no CI budget, the engine stays on Effect | ~3.5–4.7 KB gzip over the Lit build; the Gyral team is profiling where |
 
 Last graded: 2026-10-07, after the move to Gyral 0.3.

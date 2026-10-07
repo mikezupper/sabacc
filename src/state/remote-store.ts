@@ -7,7 +7,8 @@ import type { Beat, Command, Game, GameError, GameEvent } from "../domain/model.
 import { newTable } from "../domain/table.ts"
 import { asEvent, ClientMessageJson, ServerMessageJson, toGameError, type ClientMessage, type ServerMessage } from "../protocol/messages.ts"
 import type { KeyValueStore } from "./persistence.ts"
-import { signal, type Connection, type Presence, type RoomState, type Store } from "./store.ts"
+import { cell } from "./cell.ts"
+import type { Connection, Presence, RoomState, Store } from "./store.ts"
 
 export const NAME_KEY = "sabacc:name"
 const tokenKey = (room: string) => `sabacc:room:${room}`
@@ -62,18 +63,18 @@ export const createRemoteStore = (options: RemoteOptions): Store => {
   const backoff = options.backoff ?? ((n: number) => Math.min(10_000, 1000 * 2 ** n))
   const savedName = read(storage, NAME_KEY) ?? ""
 
-  const game = signal<Game>(newTable())
-  const log = signal<ReadonlyArray<GameEvent>>([])
-  const last = signal<ReadonlyArray<Beat>>([])
-  const notice = signal<Option.Option<GameError>>(Option.none())
+  const game = cell<Game>(newTable())
+  const log = cell<ReadonlyArray<GameEvent>>([])
+  const last = cell<ReadonlyArray<Beat>>([])
+  const notice = cell<Option.Option<GameError>>(Option.none())
   const room: RoomState = {
     code,
-    connection: signal<Connection>(savedName === "" ? "naming" : "connecting"),
-    spectator: signal(false),
-    host: signal(false),
-    presence: signal<Presence>({ connected: [], deadline: undefined }),
-    problem: signal<string | undefined>(undefined),
-    name: signal(savedName),
+    connection: cell<Connection>(savedName === "" ? "naming" : "connecting"),
+    spectator: cell(false),
+    host: cell(false),
+    presence: cell<Presence>({ connected: [], deadline: undefined }),
+    problem: cell<string | undefined>(undefined),
+    name: cell(savedName),
     join: (name) => {
       const trimmed = name.trim().slice(0, 24)
       if (trimmed === "") return

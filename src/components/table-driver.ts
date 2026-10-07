@@ -2,7 +2,6 @@
 // state stays in the store, which runs the engine; Gyral components reach it only
 // through this driver: `play(command)` sends a move, `watchTable(toMsg)` streams what the
 // views read. Pages (and tests) bind it to their store with `provideTable(element, store)`.
-import { Signal } from "signal-polyfill"
 import { command, defineDriver, provideDrivers, type Command, type Driver } from "@gyral/core"
 import type { Beat, Command as GameCommand, Game, GameError, GameEvent } from "../domain/model.ts"
 import type { Option } from "effect"
@@ -65,21 +64,31 @@ const snapshotOf = (store: Store): TableSnapshot => {
   }
 }
 
-/** Emit a snapshot now and after every change to the store's signals, until aborted. */
+/** Every observable value of the store (the room's too, at a multiplayer table). */
+const cellsOf = (store: Store) => {
+  const r = store.room
+  const room = r === undefined ? [] : [r.connection, r.spectator, r.host, r.presence, r.problem, r.name]
+  return [store.game, store.last, store.log, store.notice, ...room]
+}
+
+/**
+ * Emit a snapshot now and after every change to the store, until aborted. Changes made in
+ * one task (a command sets several values) arrive as one snapshot, a microtask later.
+ */
 const watch = (store: Store, signal: AbortSignal, emit: (s: TableSnapshot) => void): Promise<TableSnapshot> =>
   new Promise(() => {
-    const current = new Signal.Computed(() => snapshotOf(store))
-    const watcher = new Signal.subtle.Watcher(() => {
-      // Signals can't be read inside the notification: read and re-arm in a microtask.
+    let queued = false
+    const changed = () => {
+      if (queued) return
+      queued = true
       queueMicrotask(() => {
-        if (signal.aborted) return
-        watcher.watch()
-        emit(current.get())
+        queued = false
+        if (!signal.aborted) emit(snapshotOf(store))
       })
-    })
-    watcher.watch(current)
-    emit(current.get())
-    signal.addEventListener("abort", () => watcher.unwatch(current), { once: true })
+    }
+    const unsubscribe = cellsOf(store).map((c) => c.subscribe(changed))
+    emit(snapshotOf(store))
+    signal.addEventListener("abort", () => unsubscribe.forEach((off) => off()), { once: true })
   })
 
 /** The table driver bound to one store. */

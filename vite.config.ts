@@ -8,6 +8,8 @@ export default defineConfig({
   ...gyralVitePreset(),
   build: {
     target: "es2022",
+    // Every browser that runs this site's CSS supports <link rel="modulepreload">.
+    modulePreload: { polyfill: false },
     // The 3D page's chunk carries Three.js (~620 KB, 160 KB gzip); the 2D page never loads it.
     chunkSizeWarningLimit: 700,
     // Two pages, one engine: the classic table and the 3D table share chunks.
