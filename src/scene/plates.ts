@@ -6,7 +6,6 @@ import { css, define, html, nothing, prop, type PropsOf, type Stateless } from "
 import type { Seat, SeatResult } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { formatCredits } from "../presentation/describe.ts"
-import { checked } from "../components/prop-schemas.ts"
 
 export interface PlateData {
   readonly seat: Seat
@@ -21,12 +20,12 @@ export interface PlateData {
   readonly winner: boolean
 }
 
-const plateSchema = checked<PlateData | undefined>("a plate", (u): u is PlateData | undefined => u === undefined || (typeof u === "object" && u !== null && "seat" in u))
+const isPlate = (u: unknown): u is PlateData => typeof u === "object" && u !== null && "seat" in u
 
 const status = (s: Seat): string =>
   s.status._tag === "Folded" ? "Folded" : s.status._tag === "SittingOut" ? "Sitting out" : s.credits === 0 && s.hand.length > 0 ? "All-in" : ""
 
-const plateProps = { plate: prop.value(plateSchema) }
+const plateProps = { plate: prop.value(isPlate) }
 
 export const SabaccPlate = define<Stateless, never, PropsOf<typeof plateProps>>("sabacc-plate", {
   props: plateProps,

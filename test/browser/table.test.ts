@@ -10,11 +10,8 @@ import { createStore, type Store } from "../../src/state/store.ts"
 
 type TableEl = InstanceType<typeof SabaccTable>
 
-/** Let the store's change reach the table (microtasks), then let every component render. */
-const flush = async () => {
-  for (let n = 0; n < 20; n++) await Promise.resolve()
-  await settled()
-}
+/** Gyral's settled() waits until messages stop arriving, the store's snapshots included. */
+const flush = () => settled()
 
 /** Mount a table on `store`, provided by a host element as the page does. */
 const mountOn = async (store: Store) => {

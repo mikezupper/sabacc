@@ -3,9 +3,10 @@ import { gyralVitePreset } from "@gyral/core/vite"
 import { defineConfig } from "vite"
 
 // Gyral's preset: its template compiler runs in `vite build` (a template rule break fails
-// the build) and its dev-server plugin keeps one @gyral/core. Keep it first.
+// the build) and its dev-server plugin keeps one @gyral/core. Keep it first. No page is
+// server-rendered, so `clientOnly` leaves all hydration code out.
 export default defineConfig({
-  ...gyralVitePreset(),
+  ...gyralVitePreset({ clientOnly: true }),
   build: {
     target: "es2022",
     // Every browser that runs this site's CSS supports <link rel="modulepreload">.

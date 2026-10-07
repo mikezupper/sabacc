@@ -1,15 +1,15 @@
 // The game log as a native disclosure, newest entry first. Stateless: the open/closed
 // state belongs to <details> itself.
 import { css, define, html, prop, type PropsOf, type Stateless } from "@gyral/core"
-import { YOU, type GameEvent } from "../domain/model.ts"
+import { YOU } from "../domain/model.ts"
 import { describeEvent, narratorOf } from "../presentation/describe.ts"
 import { base } from "../styles/shared.ts"
-import { listSchema, namesSchema } from "./prop-schemas.ts"
+import { isEventList, isNames } from "./prop-schemas.ts"
 
 const props = {
-  events: prop.value(listSchema<GameEvent>("events"), { default: [] }),
+  events: prop.value(isEventList, { default: [] }),
   /** Seat names for the narration; empty for solo play ("You", "Opponent N"). */
-  names: prop.value(namesSchema, { default: [] }),
+  names: prop.value(isNames, { default: [] }),
   /** Watching a multiplayer table: no seat is "you". */
   spectator: prop.boolean(),
 }

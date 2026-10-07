@@ -5,5 +5,5 @@ human-readable summary, refreshed when debt is filed or paid.
 
 | Item | Why it matters | Bead |
 |---|---|---|
-| Gyral 0.3 is installed from `vendor/gyral/0.3.0` until the npm release (2026-10-10) | The lockfile points at tarballs in the repo; switch to the registry and delete `vendor/` | `sabacc-x56.11` (deferred to 2026-10-10) |
+| Gyral is installed from `vendor/gyral/0.3.1-next.1` (a prerelease) until 0.3.1 is on npm | The lockfile points at tarballs in the repo; switch to the registry and delete `vendor/` | `sabacc-x56.11`, `sabacc-92i` |
 | Gyral feedback not yet reported upstream | Mixed-app output events, typed `emit()`, hook cleanup, prop-schema helper, SVG fragments | `sabacc-nc4` |

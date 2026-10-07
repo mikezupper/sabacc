@@ -3,7 +3,7 @@
 // clock is running. Shared by the classic table and the 3D view; it watches the table
 // itself, so a parent only places it.
 import { css, define, html, nothing, prop, type PropsOf } from "@gyral/core"
-import { delay } from "@gyral/time"
+import { delay } from "@gyral/time/delay"
 import { request, type HttpError } from "@gyral/http"
 import { YOU } from "../domain/model.ts"
 import { base, buttons } from "../styles/shared.ts"

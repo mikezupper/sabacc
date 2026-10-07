@@ -7,7 +7,7 @@
 // (the 3D view also picks by clicking a card) and offers Lock / Trade for it. Without
 // `pick`, the classic table shows Lock / Trade under each card instead.
 import { Option } from "effect"
-import { css, define, each, emit, html, intents, nothing, prop, type PropsOf } from "@gyral/core"
+import { css, define, each, html, intents, nothing, outputs, prop, type PropsOf } from "@gyral/core"
 import { cardTitle, describeCard, type Card } from "../domain/cards.ts"
 import { BUY_IN, MIN_BET } from "../domain/constants.ts"
 import { Command, YOU, type Game, type Seat } from "../domain/model.ts"
@@ -15,19 +15,19 @@ import { deckSize, seatAt } from "../domain/table.ts"
 import { formatCredits } from "../presentation/describe.ts"
 import { yourStep } from "../presentation/prompt.ts"
 import { base, buttons } from "../styles/shared.ts"
-import { cardIdSchema, gameSchema } from "./prop-schemas.ts"
+import { isCardId, isGame } from "./prop-schemas.ts"
 import { play } from "./table-driver.ts"
 
 const props = {
   /** The game as currently shown (a playback snapshot or the live game). */
-  game: prop.value(gameSchema),
+  game: prop.value(isGame),
   /** A playback is running: offer Skip ahead instead of moves. */
   playing: prop.boolean(),
   pending: prop.number({ default: 0 }),
   /** Choose a card here for Lock / Trade (3D view). */
   pick: prop.boolean(),
   /** The chosen card id in `pick` mode. */
-  selected: prop.value(cardIdSchema),
+  selected: prop.value(isCardId),
   /** Watching a multiplayer table: no moves to offer. */
   spectator: prop.boolean(),
   /** A multiplayer guest: only the host may start a new table. */
@@ -61,13 +61,8 @@ type Msg =
 /** What the parent hears: skip the playback, or the card you chose (pick mode). */
 export type ControlsOutput = { readonly _tag: "Skip" } | { readonly _tag: "CardSelected"; readonly cardId: number | undefined }
 
-/**
- * The DOM event that carries a Gyral child's outputs. A Gyral parent listens with
- * `child()`; the remaining Lit parents listen for this event until they're converted.
- */
-export const OUTPUT_EVENT = "gyral-output"
-
 const i = intents<Msg>()
+const emit = outputs<ControlsOutput>()
 
 const you = (game: Game | undefined): Seat | undefined => (game === undefined ? undefined : Option.getOrUndefined(seatAt(game, YOU)))
 
@@ -152,7 +147,7 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
     Gain: (s) => [s, [play(Command.Gain())]],
     Stand: (s) => [s, [play(Command.Stand())]],
     // Choosing the chosen card again un-chooses it.
-    Choose: (s, m, { props: p }) => [s, [emit({ _tag: "CardSelected", cardId: m.cardId === p.selected ? undefined : m.cardId } satisfies ControlsOutput)]],
+    Choose: (s, m, { props: p }) => [s, [emit({ _tag: "CardSelected", cardId: m.cardId === p.selected ? undefined : m.cardId })]],
     Lock: (s, _m, { props: p }) => {
       const c = chosen(p)
       return c === undefined ? s : [s, [play(Command.Lock({ cardId: c.id }))]]
@@ -163,7 +158,7 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
     },
     CallHand: (s) => [s, [play(Command.CallHand())]],
     Pass: (s) => [s, [play(Command.Pass())]],
-    Skip: (s) => [s, [emit({ _tag: "Skip" } satisfies ControlsOutput)]],
+    Skip: (s) => [s, [emit({ _tag: "Skip" })]],
   },
   view: (s, i, { props: p }) => {
     const game = p.game

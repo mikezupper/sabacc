@@ -28,7 +28,7 @@ const layerOf = (path: string): Layer => {
 }
 
 /** Gyral (the UI framework) belongs to the view layers only: components and scene. */
-const GYRAL = ["@gyral/core", "@gyral/time", "@gyral/http"]
+const GYRAL = ["@gyral/core", "@gyral/time", "@gyral/http"] // subpaths too (@gyral/time/delay)
 
 // Allowed targets per layer: internal layers plus package names (prefix match).
 const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray<Layer>; packages: ReadonlyArray<string> }> = {

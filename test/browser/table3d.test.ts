@@ -18,11 +18,8 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => r(undefined))
 /** The Three.js stage inside the view's <sabacc-stage>. */
 const stage = (el: Table3d) => shadow(el).querySelector("sabacc-stage")?.stage
 
-/** Let the store's change reach the view (microtasks), then let every component render. */
-const flush = async () => {
-  for (let n = 0; n < 20; n++) await Promise.resolve()
-  await settled()
-}
+/** Gyral's settled() waits until messages stop arriving, the store's snapshots included. */
+const flush = () => settled()
 
 const mount = async (seed = 42) => {
   const store = createStore(seed)
