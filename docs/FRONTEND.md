@@ -28,8 +28,9 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 - Other browser effects are commands too (`src/components/browser-drivers.ts`): the page
   address, navigation, the clipboard, a countdown clock. HTTP is `@gyral/http`.
 - Children talk up through outputs (`emit()`), parents listen with `child()` intents.
-  Object props use `prop.value(schema)` with the identity-preserving schemas in
-  `prop-schemas.ts` (they check the shape and return the same object).
+  Object props use `prop.value(schema)` with the checks in `prop-schemas.ts`: they
+  validate the shape and never transform (Gyral keeps the value a property is set to and
+  skips the schema in production; a transforming schema only warns in development).
 - Booleans are presence props (`prop.boolean()`, default `false`): name them so the default
   is the common case (`hide-new-table`, not `new-table`).
 - Styles: `styles: [base, buttons, css\`…\`]`; `src/styles/shared.ts` exports plain CSS text

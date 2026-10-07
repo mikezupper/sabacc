@@ -1,6 +1,8 @@
 {
   "name": "sabacc",
   "version": "0.1.0",
+  "license": "MIT",
+  "author": "Mike Zupper",
   "private": true,
   "type": "module",
   "engines": {

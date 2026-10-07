@@ -20,3 +20,8 @@ npm run check                     # typecheck, architecture lint, tests, build
 
 CI runs `npm run check` on a self-hosted GitHub Actions runner (see AGENTS.md).
 Work is tracked with [beads](https://github.com/gastownhall/beads): `bd ready`.
+
+## License
+
+[MIT](LICENSE) © Mike Zupper. A fan-made game, not affiliated with or endorsed by
+Lucasfilm or Disney; Star Wars names belong to their owners.

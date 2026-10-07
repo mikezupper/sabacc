@@ -1,6 +1,7 @@
 // Standard Schemas for Gyral props that carry app values (properties, not attributes).
-// They check the shape and return the same object, so a prop keeps its identity and a
-// component re-renders only when the value really changed.
+// They check the shape without transforming it. Gyral validates property sets in
+// development only and always keeps the value it was given; a schema that transformed
+// (a decoding schema) would only trigger its development warning.
 import type { Card } from "../domain/cards.ts"
 import type { Game, Seat, SeatResult } from "../domain/model.ts"
 
