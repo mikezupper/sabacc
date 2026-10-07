@@ -1,7 +1,7 @@
 # Star Wars Sabacc
 
 A browser card game: get your hand closest to ±23, survive the Sabacc Shift, take the pot.
-Lit + TypeScript UI over a pure [Effect](https://effect.website) rules engine.
+[Gyral](https://gyral.dev) + TypeScript UI over a pure [Effect](https://effect.website) rules engine.
 
 - **Rules (source of truth):** [docs/product-specs/sabacc-rules.md](docs/product-specs/sabacc-rules.md)
 - **How the code is organised:** [ARCHITECTURE.md](ARCHITECTURE.md)

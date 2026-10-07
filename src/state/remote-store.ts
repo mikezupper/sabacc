@@ -2,13 +2,12 @@
 // WebSocket instead of by a local engine. The server sends only what this player may
 // see, already rotated so they are seat 0. Commands go up; transitions come down and
 // play back exactly like solo play. Messages are decoded with the protocol's schemas.
-import { signal } from "@lit-labs/signals"
 import { Either, Option, Schema } from "effect"
 import type { Beat, Command, Game, GameError, GameEvent } from "../domain/model.ts"
 import { newTable } from "../domain/table.ts"
 import { asEvent, ClientMessageJson, ServerMessageJson, toGameError, type ClientMessage, type ServerMessage } from "../protocol/messages.ts"
 import type { KeyValueStore } from "./persistence.ts"
-import type { Connection, Presence, RoomState, Store } from "./store.ts"
+import { signal, type Connection, type Presence, type RoomState, type Store } from "./store.ts"
 
 export const NAME_KEY = "sabacc:name"
 const tokenKey = (room: string) => `sabacc:room:${room}`

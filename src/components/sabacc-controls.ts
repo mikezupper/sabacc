@@ -219,9 +219,8 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
     }
   },
   styles: [
-    // The shared tokens are still Lit `css` values; Gyral takes their text.
-    base.cssText,
-    buttons.cssText,
+    base,
+    buttons,
     css`
       .controls { display: flex; flex-wrap: wrap; align-items: end; gap: var(--space-xs); }
       label { display: grid; gap: var(--space-2xs); font-size: var(--step--1); font-weight: 600; }

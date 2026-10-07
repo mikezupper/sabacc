@@ -1,7 +1,7 @@
 # Architecture
 
 A Sabacc game with two views of one engine, played solo in the browser or with friends
-through a server. A pure Effect domain core holds every rule. Lit components render it
+through a server. A pure Effect domain core holds every rule. Gyral components render it
 as a 2D table (`index.html`, static, semantic and crawlable) and a Three.js scene as a
 3D table (`3d.html`); both share the store, beat playback, the wording and the controls.
 Solo, the store runs the engine in the browser. Multiplayer, a Node server
@@ -18,7 +18,7 @@ entry-client.ts (2D)            entry-3d.ts (3D)       app wiring: ?seed, store,
       │                               │
       │                         scene/                 Three.js table + <sabacc-3d> HUD shell
       │                               │
-components/  ◄────────────────────────┘                Lit elements (shared controls, log)
+components/  ◄────────────────────────┘                Gyral components, table driver
       │
 presentation/                                          wording, prompt, beat playback (no framework)
 state/                                                 stores (local engine, or remote over WebSocket)
@@ -34,15 +34,15 @@ server/  (Node only)  → protocol/, domain/             rooms, timers, SQLite, 
 
 | Layer | May import | Must not import |
 |---|---|---|
-| `src/domain/` | `effect`, other `src/domain/` files | `lit`, `@lit-labs/*`, `src/state`, `src/components`, DOM globals |
+| `src/domain/` | `effect`, other `src/domain/` files | `@gyral/*`, `src/state`, `src/components`, DOM globals |
 | `src/protocol/` | `effect`, `src/domain` | everything else |
-| `src/state/` | `effect`, `@lit-labs/signals`, `src/protocol`, `src/domain` | `lit`, `src/components` |
-| `src/server/` | `effect`, `@effect/platform`, `@effect/platform-node`, `node:*`, `src/protocol`, `src/domain` | `lit`, `three`, browser layers |
-| `src/presentation/` | `effect`, `src/domain` | `lit`, `three`, `src/state`, `src/components` |
-| `src/components/` | `lit`, `@lit-labs/signals`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
-| `src/scene/` | `three`, `lit`, `@lit-labs/signals`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
-| `src/styles/` | `lit` | everything else |
-| `src/entry-client.ts`, `src/entry-3d.ts` | anything | — |
+| `src/state/` | `effect`, `signal-polyfill`, `src/protocol`, `src/domain` | `@gyral/*`, `src/components` |
+| `src/server/` | `effect`, `@effect/platform`, `@effect/platform-node`, `node:*`, `src/protocol`, `src/domain` | `@gyral/*`, `three`, browser layers |
+| `src/presentation/` | `effect`, `src/domain` | `@gyral/*`, `three`, `src/state`, `src/components` |
+| `src/components/` | `@gyral/core`, `@gyral/time`, `@gyral/http`, `signal-polyfill`, `effect`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
+| `src/scene/` | `three`, `@gyral/*`, `effect`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
+| `src/styles/` | nothing (plain CSS text) | everything |
+| `src/entry-client.ts`, `src/entry-3d.ts`, `src/entry-table.ts` | anything | — |
 
 Three.js is imported only under `src/scene/`, so the 2D page never ships it. Effects are
 run only in `src/state/store.ts` (browser) and `src/server/main.ts` (server).
@@ -53,8 +53,11 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files �
 
 ## Data flow
 
-1. A view calls `store.dispatch(command)` (`src/state/store.ts`); in both views the
-   moves come from the shared `<sabacc-controls>` as `command` events.
+1. A component returns `play(move)`, a command for the **table driver**
+   (`src/components/table-driver.ts`), which calls `store.dispatch(command)`
+   (`src/state/store.ts`). In both views the moves come from the shared
+   `<sabacc-controls>` (and Lock/Trade from `<sabacc-seat>` on the classic table).
+   Each page provides the driver for its store in `src/entry-table.ts`.
 2. The store runs `applyCommand(game, command)` from `src/domain/engine.ts`
    **once, synchronously**, with the store's seeded `Random` service.
    This is the only `Effect.run*` call in `src/` outside tests.
@@ -64,19 +67,25 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files �
    with the game right after it. No timers carry game state, so no state can go
    stale between steps.
 4. The store sets the `game` signal, appends the events to `log`, sets `last` to the
-   beats and, for a saved table, writes the game to storage. Components re-render.
-5. Each view plays the beats back one at a time (opponents' turns, shifts) with a
-   `BeatPlayer` (`src/presentation/playback.ts`) and hides controls until they're
-   shown: `<sabacc-table>` through the Lit `Playback` controller, `<sabacc-3d>` with
-   longer delays (`src/scene/timing.ts`) so cards can fly and dice can tumble. It owns
-   only the playback cursor; under `prefers-reduced-motion` it is instant. The store's
-   game is already final throughout.
+   beats and, for a saved table, writes the game to storage. The table driver's
+   `watchTable` notices the change and sends each watching component one
+   `TableChanged` message with a snapshot (game, beats, log, notice, room).
+5. Each view plays the beats back one at a time (opponents' turns, shifts) and hides
+   controls until they're shown. Playback is a pure model in its state
+   (`src/presentation/playback.ts`); timers are `@gyral/time` commands that send
+   `Advance` back (`src/components/playback-commands.ts`). `<sabacc-3d>` uses longer
+   delays (`src/scene/timing.ts`) so cards can fly and dice can tumble. Under
+   `prefers-reduced-motion` it is instant. The store's game is already final throughout.
 6. A failed command (e.g. `InsufficientCredits`) comes back as a tagged error and
    becomes a user-facing notice. It never changes the game.
 
 ## The 3D view
 
-`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) hands each snapshot it shows to `Stage.show`.
+`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) is a Gyral component like the classic table;
+its view puts a hook (`src/scene/stage-hook.ts`) on the stage element, which mounts the
+Three.js `Stage` and hands it each snapshot to draw (`Stage.show`). The stage reports
+picks, hovers and a missing WebGL as one DOM event (`stage-event`) that an intent turns
+into a message, and shuts itself down when its element leaves the page.
 `Board` (`src/scene/board.ts`) keeps one object per card id and moves it towards the
 placement `layout.ts` computes for that snapshot, so dealing, trading, folding and the
 reveal animate without any game logic in the scene. A new beat adds one-off effects
@@ -139,7 +148,11 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | Browser storage adapter | `src/state/persistence.ts` |
 | Wording for events, results, errors | `src/presentation/describe.ts` |
 | Status line ("Betting: 200 to match") | `src/presentation/prompt.ts` |
-| Turn playback (any view) | `src/presentation/playback.ts`; Lit adapter `src/components/playback.ts` |
+| Turn playback (any view) | `src/presentation/playback.ts` (model), `src/components/playback-commands.ts` (timers) |
+| Store ⇄ components (snapshot, moves, join) | `src/components/table-driver.ts`, provided in `src/entry-table.ts` |
+| Page address, navigation, clipboard, clock, reduced motion | `src/components/browser-drivers.ts` |
+| Prop schemas (identity-preserving) | `src/components/prop-schemas.ts` |
+| Stage hook, 3D name plates | `src/scene/stage-hook.ts`, `src/scene/plates.ts` |
 | Action controls (both views) | `src/components/sabacc-controls.ts` |
 | Seed and store start-up (both pages) | `src/state/boot.ts` |
 | 3D element, HUD | `src/scene/sabacc-3d.ts`, `src/scene/hud-styles.ts` |

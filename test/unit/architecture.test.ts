@@ -16,7 +16,7 @@ describe("architecture rules", () => {
   })
 
   it("allows downward edges", () => {
-    expect(rules("src/components/x.ts", `import { store } from "../state/store.js"\nimport { html } from "lit"\n`)).toEqual([])
+    expect(rules("src/components/x.ts", `import { store } from "../state/store.js"\nimport { html } from "@gyral/core"\n`)).toEqual([])
     expect(rules("src/state/x.ts", `import { Effect } from "effect"\nimport type { Game } from "../domain/model.js"\n`)).toEqual([])
   })
 
@@ -38,6 +38,11 @@ describe("architecture rules", () => {
     expect(rules("src/protocol/x.ts", `import { DatabaseSync } from "node:sqlite"\n`)).toContain("layer-package")
     expect(rules("src/server/main.ts", `import { NodeRuntime } from "@effect/platform-node"\nNodeRuntime.runMain(program)\n`)).toEqual([])
     expect(rules("src/server/room.ts", `Effect.runFork(e)\n`)).toContain("single-runtime")
+  })
+
+  it("has no Lit anywhere: the UI is Gyral", () => {
+    for (const layer of ["components", "scene", "state", "styles"]) expect(rules(`src/${layer}/x.ts`, `import { html } from "lit"\n`)).toContain("layer-package")
+    expect(rules("src/components/x.ts", `import { SignalWatcher } from "@lit-labs/signals"\n`)).toContain("layer-package")
   })
 
   it("keeps Gyral in the view layers", () => {

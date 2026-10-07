@@ -1,7 +1,7 @@
 # AGENTS.md — map of this repo
 
-Star Wars Sabacc: a browser card game. Lit + TypeScript UI, pure Effect rules engine,
-Vite build, Vitest tests. Two views of one engine: the classic Lit table (`index.html`)
+Star Wars Sabacc: a browser card game. Gyral + TypeScript UI, pure Effect rules engine,
+Vite build, Vitest tests. Two views of one engine: the classic table (`index.html`)
 and a Three.js 3D table (`3d.html`), each solo in the browser or multiplayer through a
 Node server (`src/server/`, Docker). This file is a table of contents; follow the links.
 
@@ -10,7 +10,7 @@ Node server (`src/server/`, Docker). This file is a table of contents; follow th
 ```bash
 bd prime          # work-tracking contract + stored memories
 bd ready          # claimable work
-npm run check     # typecheck + architecture lint + tests + build; must be green
+npm run check     # typecheck + architecture and template lints + tests + build; must be green
 ```
 
 Beads (`bd`) is the only task tracker. Create a bead before writing code; file
@@ -24,7 +24,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | How our rules compare with Star Wars lore | [docs/references/sabacc-lore.md](docs/references/sabacc-lore.md) |
 | Layers, allowed imports, data flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Why things are the way they are | [docs/design-docs/core-beliefs.md](docs/design-docs/core-beliefs.md) |
-| Lit, HTML, CSS and SEO conventions | [docs/FRONTEND.md](docs/FRONTEND.md) |
+| Gyral, HTML, CSS and SEO conventions | [docs/FRONTEND.md](docs/FRONTEND.md) |
 | Current plan, decisions, progress | [docs/exec-plans/active/](docs/exec-plans/active/README.md) (done: [completed/](docs/exec-plans/completed/)) |
 | Known debt | [docs/exec-plans/tech-debt-tracker.md](docs/exec-plans/tech-debt-tracker.md) |
 | How good each area is | [docs/QUALITY_SCORE.md](docs/QUALITY_SCORE.md) |
@@ -40,6 +40,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | `npm run check` | Everything below, in order; the merge gate |
 | `npm run typecheck` | `tsc --noEmit`, strict |
 | `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
+| `npm run lint:templates` | Gyral's template rules over `src/components` and `src/scene` (ESLint) |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
 | `npm run build` | Production build to `dist/` |
 | `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |
@@ -49,7 +50,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 ## Invariants (enforced — don't work around them)
 
 1. `src/domain/` is pure: imports only `effect`; no `throw`, `async`, `Math.random`,
-   `Date.now`, DOM, Lit. Randomness comes from Effect's `Random` service.
+   `Date.now`, DOM, UI frameworks. Randomness comes from Effect's `Random` service.
 2. Game state changes only through `applyCommand` in `src/domain/engine.ts`, run by
    the store in `src/state/store.ts`. Never keep game state in a component, a 3D
    scene object or a timer.
@@ -63,7 +64,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 
 ## Skills used in this repo
 
-lit-web-apps · effect-fp-skill · modern-css · semantic-html ·
+gyral (from the Gyral checkout's `skills/gyral/`) · effect-fp-skill · modern-css · semantic-html ·
 google-seo-fundamentals · beads. Load the relevant one before working in its area.
 
 ## Validating a change in the real app

@@ -9,7 +9,7 @@ export default defineConfig({
       {
         // Components run in real Chromium with Gyral's runtime template checks. Pre-bundle
         // Gyral so Vite never discovers it mid-run (which reloads the test page).
-        ...gyralVitePreset({ optimize: ["@gyral/core", "@gyral/time", "@gyral/http"] }),
+        ...gyralVitePreset({ optimize: ["@gyral/core", "@gyral/time", "@gyral/http", "signal-polyfill"] }),
         test: {
           name: "browser",
           include: ["test/browser/**/*.test.ts"],

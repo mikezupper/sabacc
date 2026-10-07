@@ -132,7 +132,12 @@ export class Stage {
     return this.board.cardCount
   }
 
+  /** True once the stage has shut down (its element left the page). */
+  disposed = false
+
   dispose(): void {
+    if (this.disposed) return
+    this.disposed = true
     this.renderer.setAnimationLoop(null)
     this.resize.disconnect()
     this.controls.dispose()
@@ -160,6 +165,12 @@ export class Stage {
   }
 
   private frame(now: number): void {
+    // Its element left the page: shut down (Gyral hooks have no cleanup of their own; the
+    // hook builds a new stage if the element comes back).
+    if (!this.host.isConnected) {
+      this.dispose()
+      return
+    }
     this.timer.update(now)
     const dt = Math.min(this.timer.getDelta(), 0.05)
     this.board.step(dt)

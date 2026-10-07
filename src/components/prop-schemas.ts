@@ -1,7 +1,8 @@
 // Standard Schemas for Gyral props that carry app values (properties, not attributes).
 // They check the shape and return the same object, so a prop keeps its identity and a
 // component re-renders only when the value really changed.
-import type { Game } from "../domain/model.ts"
+import type { Card } from "../domain/cards.ts"
+import type { Game, Seat, SeatResult } from "../domain/model.ts"
 
 interface Issue {
   readonly message: string
@@ -37,3 +38,28 @@ export const gameSchema = checked<Game>("a game", (u): u is Game => {
 
 /** A card id, or nothing chosen. */
 export const cardIdSchema = checked<number | undefined>("a card id", (u): u is number | undefined => u === undefined || Number.isInteger(u))
+
+/** A card (face up), or none: the card is shown face down. */
+export const cardSchema = checked<Card | undefined>("a card", (u): u is Card | undefined =>
+  u === undefined || (isRecord(u) && (u["_tag"] === "Suited" || u["_tag"] === "Face") && Number.isInteger(u["id"]) && typeof u["value"] === "number"),
+)
+
+/** A seat at the table. */
+export const seatSchema = checked<Seat | undefined>("a seat", (u): u is Seat | undefined =>
+  u === undefined || (isRecord(u) && Number.isInteger(u["index"]) && typeof u["name"] === "string" && Array.isArray(u["hand"])),
+)
+
+/** One seat's line of a hand result. */
+export const seatResultSchema = checked<SeatResult | undefined>("a seat result", (u): u is SeatResult | undefined =>
+  u === undefined || (isRecord(u) && Number.isInteger(u["seat"]) && typeof u["won"] === "number"),
+)
+
+/** A list of anything the views draw as is (events, beats): checked to be an array. */
+export const listSchema = <T>(what: string) => checked<ReadonlyArray<T>>(`a list of ${what}`, (u): u is ReadonlyArray<T> => Array.isArray(u))
+
+/** Seat names, by seat. */
+export const namesSchema = checked<ReadonlyArray<string>>("seat names", (u): u is ReadonlyArray<string> => Array.isArray(u) && u.every((x) => typeof x === "string"))
+
+/** A seat number, or nobody (a spectator). */
+export const seatNumberSchema = checked<number | undefined>("a seat number", (u): u is number | undefined => u === undefined || Number.isInteger(u))
+
