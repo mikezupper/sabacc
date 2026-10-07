@@ -16,8 +16,7 @@
     "skipLibCheck": true,
     "noEmit": true,
     "allowImportingTsExtensions": true,
-    // BOTH required for Lit decorators — never change these two (lit-web-apps golden rule #1).
-    "experimentalDecorators": true,
+    // Gyral's tsconfig requirement (skills/gyral SKILL.md "Manual install"). No decorators.
     "useDefineForClassFields": false
   },
   "include": ["src", "test", "scripts", "vite.config.ts", "vitest.config.ts"]

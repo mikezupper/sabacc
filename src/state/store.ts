@@ -1,5 +1,8 @@
-import { signal, type Signal } from "@lit-labs/signals"
+import { Signal } from "signal-polyfill"
 import { Effect, Either, Option, Random } from "effect"
+
+/** A signal: the views watch these through the table driver (components/table-driver.ts). */
+export const signal = <T>(value: T): Signal.State<T> => new Signal.State(value)
 import { applyCommand } from "../domain/engine.ts"
 import { eventsOf, type Beat, type Command, type Game, type GameError, type GameEvent } from "../domain/model.ts"
 import { newTable } from "../domain/table.ts"

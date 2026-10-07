@@ -1,41 +1,55 @@
+import { settled } from "@gyral/core"
+import { Signal } from "signal-polyfill"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
-import "../../src/components/sabacc-table.ts"
 import { SabaccTable } from "../../src/components/sabacc-table.ts"
+import { provideTable } from "../../src/components/table-driver.ts"
+import { isPlaying, revealed } from "../../src/presentation/playback.ts"
 import { createStore, type Store } from "../../src/state/store.ts"
 
+type TableEl = InstanceType<typeof SabaccTable>
+
+/** Let the store's change reach the table (microtasks), then let every component render. */
+const flush = async () => {
+  for (let n = 0; n < 20; n++) await Promise.resolve()
+  await settled()
+}
+
+/** Mount a table on `store`, provided by a host element as the page does. */
+const mountOn = async (store: Store) => {
+  const host = document.createElement("div")
+  provideTable(host, store)
+  const el = document.createElement("sabacc-table") as TableEl
+  host.append(el)
+  document.body.append(host)
+  await flush()
+  return el
+}
+
 const mount = async (seed = 42) => {
-  const el = document.createElement("sabacc-table") as SabaccTable
   const store = createStore(seed)
-  el.store = store
-  document.body.append(el)
-  await el.updateComplete
-  return { el, store }
+  return { el: await mountOn(store), store }
 }
 
 /** Let the table render the final state: finish any playback, then wait for children. */
-const settle = async (el: SabaccTable, finishPlayback = true) => {
-  await el.updateComplete
+const settle = async (el: TableEl, finishPlayback = true) => {
+  await flush()
   if (finishPlayback) {
-    el.playback.skip()
-    await el.updateComplete
+    el.send({ _tag: "Skip" })
+    await flush()
   }
-  const kids = [...(el.shadowRoot?.querySelectorAll("sabacc-seat, sabacc-log, sabacc-controls") ?? [])]
-  await Promise.all(kids.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
-  const cards = kids.flatMap((c) => [...(c.shadowRoot?.querySelectorAll("sabacc-card") ?? [])])
-  await Promise.all(cards.map((c) => (c as unknown as { updateComplete: Promise<unknown> }).updateComplete))
 }
 
 const shadow = (el: Element) => el.shadowRoot ?? el.attachShadow({ mode: "open" })
-const seats = (el: SabaccTable) => [...shadow(el).querySelectorAll("sabacc-seat")]
+const seats = (el: TableEl) => [...shadow(el).querySelectorAll("sabacc-seat")]
 const cardLabels = (seat: Element) =>
   [...shadow(seat).querySelectorAll("sabacc-card")].map((c) => shadow(c).querySelector("svg")?.getAttribute("aria-label") ?? "")
 /** Buttons in `root`'s shadow, including its shared <sabacc-controls>. */
 const button = (root: Element, text: string) =>
   [...shadow(root).querySelectorAll("button"), ...[...shadow(root).querySelectorAll("sabacc-controls")].flatMap((c) => [...shadow(c).querySelectorAll("button")])]
     .find((b) => b.textContent?.trim().startsWith(text))
-const output = (el: SabaccTable) => shadow(el).querySelector("output")
+const output = (el: TableEl) => shadow(el).querySelector("output")
 
 /** Play safe default moves until it's your turn in `tag` (or the hand ends). */
 const until = (store: Store, tag: "Betting" | "Drawing" | "CallWindow") => {
@@ -124,10 +138,12 @@ describe("<sabacc-table>", () => {
     expect(shadow(el).querySelector("[role=alert]")?.textContent).toContain("Sabacc Shift")
   })
 
-  it("flashes the shift alert at most 2 times a second, and only without reduced motion", () => {
-    const text = [SabaccTable.styles].flat(2).map((s) => ("cssText" in s ? s.cssText : "")).join("\n")
+  it("flashes the shift alert at most 2 times a second, and only without reduced motion", async () => {
+    const { el } = await mount()
+    const text = (el.shadowRoot?.adoptedStyleSheets ?? []).flatMap((sheet) => [...sheet.cssRules].map((r) => r.cssText)).join("\n")
     const gate = text.indexOf("@media (prefers-reduced-motion: no-preference)")
-    const anims = [...text.matchAll(/animation:\s*\w+\s+([\d.]+)s/g)]
+    // Chromium writes the shorthand duration first ("animation: 0.5s ease-in-out 3 flash").
+    const anims = [...text.matchAll(/animation:[^;]*?(\d*\.?\d+)s\b/g)]
     expect(gate).toBeGreaterThan(-1)
     expect(anims.length).toBeGreaterThan(0)
     for (const m of anims) {
@@ -147,7 +163,7 @@ describe("opponent turn playback (sabacc-jlp)", () => {
     await settle(el, false)
     const total = store.last.get().length
     expect(total).toBeGreaterThan(2)
-    expect(el.playback.playing).toBe(true)
+    expect(isPlaying(el.state.playback)).toBe(true)
     expect(button(el, "Skip ahead")).toBeDefined()
     expect(button(el, "Check") ?? button(el, "Match")).toBeUndefined()
     expect(output(el)?.textContent).toContain("New hand")
@@ -155,12 +171,12 @@ describe("opponent turn playback (sabacc-jlp)", () => {
     expect(shadow(el).querySelector("sabacc-log")?.events.length).toBeLessThan(store.log.get().length)
 
     await vi.advanceTimersByTimeAsync(800)
-    await el.updateComplete
-    expect(el.playback.revealed.length).toBeGreaterThan(1)
+    await flush()
+    expect(revealed(el.state.playback).length).toBeGreaterThan(1)
 
     await vi.runAllTimersAsync()
     await settle(el, false)
-    expect(el.playback.playing).toBe(false)
+    expect(isPlaying(el.state.playback)).toBe(false)
     expect(button(el, "Check") ?? button(el, "Match")).toBeDefined()
     expect(shadow(el).querySelector("sabacc-log")?.events.length).toBe(store.log.get().length)
   })
@@ -172,7 +188,7 @@ describe("opponent turn playback (sabacc-jlp)", () => {
     await settle(el, false)
     button(el, "Skip ahead")?.click()
     await settle(el, false)
-    expect(el.playback.playing).toBe(false)
+    expect(isPlaying(el.state.playback)).toBe(false)
     expect(button(el, "Check") ?? button(el, "Match")).toBeDefined()
   })
 })
@@ -184,9 +200,7 @@ describe("saved table (sabacc-3nc)", () => {
     const first = createStore(1, { storage })
     first.dispatch(Command.StartHand())
     first.dispatch(Command.Fold())
-    const el = document.createElement("sabacc-table") as SabaccTable
-    el.store = createStore(2, { storage })
-    document.body.append(el)
+    const el = await mountOn(createStore(2, { storage }))
     await settle(el)
     expect(output(el)?.textContent).toContain("Welcome back")
     expect(shadow(el).querySelector(".seed")?.textContent).toContain("saved in this browser")
@@ -196,7 +210,7 @@ describe("saved table (sabacc-3nc)", () => {
 describe("multiplayer table (sabacc-kiq)", () => {
   it("offers New table only to the host", async () => {
     // Regression: `?new-table=false` left the property's default `true` in place.
-    const { signal } = await import("@lit-labs/signals")
+    const signal = <T>(v: T) => new Signal.State(v)
     const asGuest = (host: boolean) => ({
       ...createStore(1),
       room: {
@@ -211,12 +225,10 @@ describe("multiplayer table (sabacc-kiq)", () => {
       },
     })
     for (const host of [true, false]) {
-      const el = document.createElement("sabacc-table") as SabaccTable
-      el.store = asGuest(host) as unknown as Store
-      document.body.append(el)
+      const el = await mountOn(asGuest(host) as unknown as Store)
       await settle(el)
       expect(button(el, "New table") !== undefined).toBe(host)
-      el.remove()
+      document.body.replaceChildren()
     }
   })
 })
@@ -229,7 +241,7 @@ describe("<sabacc-card>", () => {
     const queen = document.createElement("sabacc-card")
     queen.card = Card.Face({ id: 2, name: "Queen of Air and Darkness", value: -2 })
     document.body.append(master, queen)
-    await Promise.all([master.updateComplete, queen.updateComplete])
+    await settled()
     expect(shadow(master).querySelector("svg")?.getAttribute("aria-label")).toBe("Master of Coins (+14), in the interference field")
     expect(shadow(queen).querySelector("svg")?.getAttribute("aria-label")).toBe("Queen of Air and Darkness (-2)")
     expect(shadow(queen).querySelector("svg")?.textContent).toContain("and Darkness")

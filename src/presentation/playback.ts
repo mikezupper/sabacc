@@ -1,5 +1,7 @@
-// Beat playback shared by every view (2D Lit table, 3D scene). Presentation state only:
-// the game is already final in the store; this decides which snapshot to show and when.
+// Beat playback shared by every view (classic table, 3D table), as a pure model: which
+// beats are on screen and how long the current one stays. No timers here: a view turns
+// `nextDelay` into a timer command and feeds `Advance` back. The game itself is already
+// final in the store; playback only decides which snapshot to show.
 import type { Beat, Game, GameEvent } from "../domain/model.ts"
 
 /** How long each kind of beat stays on screen before the next one (ms). */
@@ -23,79 +25,42 @@ export const beatDelay = (event: GameEvent): number => {
   }
 }
 
-export const prefersReducedMotion = (): boolean =>
-  typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches
-
-export interface BeatPlayerOptions {
-  /** Called whenever the shown beats change. */
-  readonly onChange: () => void
-  /** True to show every beat at once (default: `prefers-reduced-motion`). */
-  readonly instant?: () => boolean
-  /** Time each beat stays up before the next (default: `beatDelay`). */
-  readonly delay?: (event: GameEvent) => number
+export interface Playback {
+  readonly beats: ReadonlyArray<Beat>
+  /** Beats on screen so far. */
+  readonly shown: number
+  /** Bumped by every new playback, so a timer from an older one is ignored. */
+  readonly run: number
 }
 
-/** Plays a transition's beats back one at a time, with no framework attached. */
-export class BeatPlayer {
-  private beats: ReadonlyArray<Beat> = []
-  private shown = 0
-  private timer: ReturnType<typeof setTimeout> | undefined
-  private readonly onChange: () => void
-  private readonly instant: () => boolean
-  private readonly delay: (event: GameEvent) => number
+export const noPlayback: Playback = { beats: [], shown: 0, run: 0 }
 
-  constructor(options: BeatPlayerOptions) {
-    this.onChange = options.onChange
-    this.instant = options.instant ?? prefersReducedMotion
-    this.delay = options.delay ?? beatDelay
-  }
+/** Play a new transition's beats: all at once when `instant`, else one at a time. */
+export const startPlayback = (p: Playback, beats: ReadonlyArray<Beat>, instant: boolean): Playback => ({
+  beats,
+  shown: instant || beats.length <= 1 ? beats.length : 1,
+  run: p.run + 1,
+})
 
-  /** Point playback at the store's latest beats; a new array starts a new playback. */
-  sync(beats: ReadonlyArray<Beat>): void {
-    if (beats === this.beats) return
-    this.stop()
-    this.beats = beats
-    this.shown = this.instant() || beats.length <= 1 ? beats.length : 1
-    this.schedule()
-  }
+export const isPlaying = (p: Playback): boolean => p.shown < p.beats.length
 
-  get playing(): boolean {
-    return this.shown < this.beats.length
-  }
+/** Show the next beat, if `run` is still the current playback. */
+export const advancePlayback = (p: Playback, run: number): Playback => (run === p.run && isPlaying(p) ? { ...p, shown: p.shown + 1 } : p)
 
-  /** Beats on screen so far. */
-  get revealed(): ReadonlyArray<Beat> {
-    return this.beats.slice(0, this.shown)
-  }
+export const skipPlayback = (p: Playback): Playback => ({ ...p, shown: p.beats.length })
 
-  /** Beats still to come. */
-  get pending(): number {
-    return this.beats.length - this.shown
-  }
+export const revealed = (p: Playback): ReadonlyArray<Beat> => p.beats.slice(0, p.shown)
 
-  /** The snapshot to draw while playing; undefined means "draw the live game". */
-  get frame(): Game | undefined {
-    return this.playing ? this.beats[this.shown - 1]?.game : undefined
-  }
+export const pending = (p: Playback): number => p.beats.length - p.shown
 
-  skip(): void {
-    this.stop()
-    this.shown = this.beats.length
-    this.onChange()
-  }
+/** The beat on screen while playing; undefined when the live game is shown. */
+export const currentBeat = (p: Playback): Beat | undefined => (isPlaying(p) ? p.beats[p.shown - 1] : undefined)
 
-  stop(): void {
-    if (this.timer !== undefined) clearTimeout(this.timer)
-    this.timer = undefined
-  }
+/** The snapshot to draw: the current beat's game while playing, else the live game. */
+export const frame = (p: Playback, live: Game): Game => currentBeat(p)?.game ?? live
 
-  private schedule(): void {
-    const current = this.beats[this.shown - 1]
-    if (!this.playing || current === undefined) return
-    this.timer = setTimeout(() => {
-      this.shown += 1
-      this.onChange()
-      this.schedule()
-    }, this.delay(current.event))
-  }
+/** How long until the next beat, or undefined when there is nothing more to show. */
+export const nextDelay = (p: Playback, delay: (event: GameEvent) => number = beatDelay): number | undefined => {
+  const beat = currentBeat(p)
+  return beat === undefined ? undefined : delay(beat.event)
 }

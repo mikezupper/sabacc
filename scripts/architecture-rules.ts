@@ -23,29 +23,33 @@ const layerOf = (path: string): Layer => {
   if (path.startsWith("src/components/")) return "components"
   if (path.startsWith("src/scene/")) return "scene"
   if (path.startsWith("src/styles/")) return "styles"
-  if (path === "src/entry-client.ts" || path === "src/entry-3d.ts") return "entry"
+  if (path === "src/entry-client.ts" || path === "src/entry-3d.ts" || path === "src/entry-table.ts") return "entry"
   return "other"
 }
+
+/** Gyral (the UI framework) belongs to the view layers only: components and scene. */
+const GYRAL = ["@gyral/core", "@gyral/time", "@gyral/http"]
 
 // Allowed targets per layer: internal layers plus package names (prefix match).
 const allowed: Record<Exclude<Layer, "entry" | "other">, { layers: ReadonlyArray<Layer>; packages: ReadonlyArray<string> }> = {
   domain: { layers: ["domain"], packages: ["effect"] },
   // The wire format shared by browser and server.
   protocol: { layers: ["protocol", "domain"], packages: ["effect"] },
-  state: { layers: ["state", "protocol", "domain"], packages: ["effect", "@lit-labs/signals"] },
+  state: { layers: ["state", "protocol", "domain"], packages: ["effect", "signal-polyfill"] },
   // The multiplayer server (Node). Never imports browser code.
   server: { layers: ["server", "protocol", "domain"], packages: ["effect", "@effect/platform", "@effect/platform-node", "node:"] },
   presentation: { layers: ["presentation", "domain"], packages: ["effect"] },
   components: {
     layers: ["components", "state", "presentation", "domain", "styles"],
-    packages: ["lit", "@lit-labs/signals", "effect"],
+    packages: ["effect", ...GYRAL, "signal-polyfill"],
   },
   // The 3D view: Three.js lives only here, so the 2D page never ships it.
   scene: {
     layers: ["scene", "components", "state", "presentation", "domain", "styles"],
-    packages: ["three", "lit", "@lit-labs/signals", "effect"],
+    packages: ["three", "effect", ...GYRAL],
   },
-  styles: { layers: ["styles"], packages: ["lit"] },
+  // Shared CSS as plain text: no imports at all.
+  styles: { layers: ["styles"], packages: [] },
 }
 
 const importSpecifiers = (text: string): ReadonlyArray<string> =>
@@ -89,7 +93,7 @@ export const checkSources = (files: ReadonlyArray<SourceFile>): ReadonlyArray<Vi
   for (const f of files) {
     if (!f.path.startsWith("src/")) continue
     if (/\.(jsx|tsx)$/.test(f.path)) {
-      out.push({ path: f.path, rule: "no-react", message: "JSX/React files are not allowed; build UI as Lit elements in src/components (see docs/FRONTEND.md)" })
+      out.push({ path: f.path, rule: "no-react", message: "JSX/React files are not allowed; build UI as Gyral components in src/components (see docs/FRONTEND.md)" })
       continue
     }
     const layer = layerOf(f.path)

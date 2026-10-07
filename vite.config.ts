@@ -1,7 +1,11 @@
 import { resolve } from "node:path"
+import { gyralVitePreset } from "@gyral/core/vite"
 import { defineConfig } from "vite"
 
+// Gyral's preset: its template compiler runs in `vite build` (a template rule break fails
+// the build) and its dev-server plugin keeps one @gyral/core. Keep it first.
 export default defineConfig({
+  ...gyralVitePreset(),
   build: {
     target: "es2022",
     // The 3D page's chunk carries Three.js (~620 KB, 160 KB gzip); the 2D page never loads it.

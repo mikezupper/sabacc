@@ -1,13 +1,36 @@
-import { css, html, LitElement } from "lit"
-import { customElement, property } from "lit/decorators.js"
-import type { GameEvent } from "../domain/model.ts"
+// The game log as a native disclosure, newest entry first. Stateless: the open/closed
+// state belongs to <details> itself.
+import { css, define, html, prop, type PropsOf, type Stateless } from "@gyral/core"
+import { YOU, type GameEvent } from "../domain/model.ts"
+import { describeEvent, narratorOf } from "../presentation/describe.ts"
 import { base } from "../styles/shared.ts"
-import { describeEvent, solo, type Narrator } from "../presentation/describe.ts"
+import { listSchema, namesSchema } from "./prop-schemas.ts"
 
-/** The game log as a native disclosure, newest entry first. */
-@customElement("sabacc-log")
-export class SabaccLog extends LitElement {
-  static override styles = [
+const props = {
+  events: prop.value(listSchema<GameEvent>("events"), { default: [] }),
+  /** Seat names for the narration; empty for solo play ("You", "Opponent N"). */
+  names: prop.value(namesSchema, { default: [] }),
+  /** Watching a multiplayer table: no seat is "you". */
+  spectator: prop.boolean(),
+}
+type Props = PropsOf<typeof props>
+
+const SOLO = ["You", "Opponent 1", "Opponent 2", "Opponent 3", "Opponent 4"]
+
+export const SabaccLog = define<Stateless, never, Props>("sabacc-log", {
+  props,
+  intent: {},
+  update: {},
+  view: (_s, _i, { props: p }) => {
+    const who = narratorOf(p.names.length > 0 ? p.names : SOLO, p.spectator ? undefined : YOU)
+    return html`<details>
+      <summary>Game log (${p.events.length})</summary>
+      <ol reversed>
+        ${[...p.events].reverse().map((e) => html`<li>${describeEvent(e, who)}</li>`)}
+      </ol>
+    </details>`
+  },
+  styles: [
     base,
     css`
       details {
@@ -34,24 +57,11 @@ export class SabaccLog extends LitElement {
       }
       li { padding-block: var(--space-2xs); border-block-start: 1px solid var(--border); }
     `,
-  ]
-
-  @property({ attribute: false }) events: ReadonlyArray<GameEvent> = []
-  /** Names for the narration (multiplayer); solo by default. */
-  @property({ attribute: false }) narrator: Narrator = solo
-
-  override render() {
-    return html`<details>
-      <summary>Game log (${this.events.length})</summary>
-      <ol reversed>
-        ${[...this.events].reverse().map((e) => html`<li>${describeEvent(e, this.narrator)}</li>`)}
-      </ol>
-    </details>`
-  }
-}
+  ],
+})
 
 declare global {
   interface HTMLElementTagNameMap {
-    "sabacc-log": SabaccLog
+    "sabacc-log": InstanceType<typeof SabaccLog>
   }
 }

@@ -1,8 +1,8 @@
 import { Option } from "effect"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { describe, expect, it } from "vitest"
 import { Command, GameEvent, InvalidBet, type Beat } from "../../src/domain/model.ts"
 import { newTable } from "../../src/domain/table.ts"
-import { beatDelay, BeatPlayer } from "../../src/presentation/playback.ts"
+import { advancePlayback, beatDelay, frame, isPlaying, nextDelay, noPlayback, pending, revealed, skipPlayback, startPlayback } from "../../src/presentation/playback.ts"
 import { promptFor, yourStep } from "../../src/presentation/prompt.ts"
 import { createStore } from "../../src/state/store.ts"
 import { sceneBeatDelay } from "../../src/scene/timing.ts"
@@ -10,44 +10,33 @@ import { sceneBeatDelay } from "../../src/scene/timing.ts"
 const beats = (n: number): ReadonlyArray<Beat> =>
   Array.from({ length: n }, (_, i) => ({ event: GameEvent.RoundStarted({ round: i + 1 }), game: newTable() }))
 
-describe("BeatPlayer (shared by the 2D and 3D views)", () => {
-  afterEach(() => vi.useRealTimers())
-
-  it("shows beats one at a time with the given delay, then the live game", async () => {
-    vi.useFakeTimers()
-    let changes = 0
-    const player = new BeatPlayer({ onChange: () => changes++, instant: () => false, delay: () => 100 })
+describe("playback model (shared by the classic and 3D views)", () => {
+  it("shows beats one at a time, then the live game", () => {
     const bs = beats(3)
-    player.sync(bs)
-    expect(player.revealed).toHaveLength(1)
-    expect(player.frame).toBe(bs[0]?.game)
-    await vi.advanceTimersByTimeAsync(100)
-    expect(player.revealed).toHaveLength(2)
-    await vi.advanceTimersByTimeAsync(100)
-    expect(player.playing).toBe(false)
-    expect(player.frame).toBeUndefined()
-    expect(changes).toBe(2)
+    let p = startPlayback(noPlayback, bs, false)
+    expect(revealed(p)).toHaveLength(1)
+    expect(frame(p, newTable())).toBe(bs[0]?.game)
+    expect(nextDelay(p, () => 100)).toBe(100)
+    p = advancePlayback(p, p.run)
+    expect(revealed(p)).toHaveLength(2)
+    p = advancePlayback(p, p.run)
+    expect(isPlaying(p)).toBe(false)
+    expect(nextDelay(p)).toBeUndefined()
+    const live = newTable()
+    expect(frame(p, live)).toBe(live)
   })
 
-  it("is instant under reduced motion, and skip shows everything", () => {
-    const instant = new BeatPlayer({ onChange: () => {}, instant: () => true })
-    instant.sync(beats(4))
-    expect(instant.playing).toBe(false)
-    const player = new BeatPlayer({ onChange: () => {}, instant: () => false })
-    player.sync(beats(4))
-    expect(player.pending).toBe(3)
-    player.skip()
-    expect(player.pending).toBe(0)
-    player.stop()
+  it("is instant when asked (reduced motion), and skip shows everything", () => {
+    expect(isPlaying(startPlayback(noPlayback, beats(4), true))).toBe(false)
+    const p = startPlayback(noPlayback, beats(4), false)
+    expect(pending(p)).toBe(3)
+    expect(pending(skipPlayback(p))).toBe(0)
   })
 
-  it("ignores the same beats twice (re-renders don't restart playback)", () => {
-    const player = new BeatPlayer({ onChange: () => {}, instant: () => false })
-    const bs = beats(3)
-    player.sync(bs)
-    player.skip()
-    player.sync(bs)
-    expect(player.playing).toBe(false)
+  it("ignores a timer from an older playback", () => {
+    const first = startPlayback(noPlayback, beats(3), false)
+    const second = startPlayback(first, beats(3), false)
+    expect(advancePlayback(second, first.run)).toBe(second)
   })
 
   it("holds every beat at least as long in 3D as in 2D", () => {

@@ -1,6 +1,8 @@
 {
   "name": "sabacc",
   "version": "0.1.0",
+  "license": "MIT",
+  "author": "Mike Zupper",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,30 +16,41 @@
     "start": "node src/server/main.ts",
     "typecheck": "tsc --noEmit",
     "lint:arch": "tsx scripts/check-architecture.ts",
+    "lint:templates": "eslint",
     "test": "vitest run",
     "test:unit": "vitest run --project unit",
     "test:browser": "vitest run --project browser",
-    "check": "npm run typecheck && npm run lint:arch && npm test && npm run build",
+    "check": "npm run typecheck && npm run lint:arch && npm run lint:templates && npm test && npm run build",
     "drive": "tsx scripts/drive.ts",
     "sim": "tsx scripts/sim.ts"
   },
   "dependencies": {
     "@effect/platform": "~0.97.2",
     "@effect/platform-node": "~0.108.2",
-    "@lit-labs/signals": "~0.3.0",
+    "@gyral/core": "file:vendor/gyral/0.3.0/gyral-core-0.3.0.tgz",
+    "@gyral/http": "file:vendor/gyral/0.3.0/gyral-http-0.3.0.tgz",
+    "@gyral/time": "file:vendor/gyral/0.3.0/gyral-time-0.3.0.tgz",
     "effect": "~3.22.0",
-    "lit": "^3.3.0",
+    "signal-polyfill": "~0.2.2",
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@gyral/devtools": "file:vendor/gyral/0.3.0/gyral-devtools-0.3.0.tgz",
+    "@gyral/testing": "file:vendor/gyral/0.3.0/gyral-testing-0.3.0.tgz",
     "@types/node": "^24.0.0",
     "@types/three": "^0.186.0",
+    "@typescript-eslint/parser": "~8.71.0",
     "@vitest/browser": "~4.1.10",
     "@vitest/browser-playwright": "~4.1.10",
+    "eslint": "~10.12.0",
+    "parse5": "^8.0.1",
     "playwright": "~1.63.0",
     "tsx": "^4.19.0",
     "typescript": "~5.9.3",
-    "vite": "~7.3.6",
+    "vite": "~8.3.3",
     "vitest": "~4.1.10"
+  },
+  "overrides": {
+    "@gyral/core": "$@gyral/core"
   }
 }

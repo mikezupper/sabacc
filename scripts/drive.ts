@@ -24,6 +24,11 @@ const inLobby = (page: Page) => page.getByRole("button", { name: /Deal a hand/ }
 
 const visible = (page: Page, name: string | RegExp) => page.getByRole("button", { name }).first().isVisible()
 
+/** "Skip ahead" vanishes when playback ends, so it can disappear between the check and the click. */
+const skipIfPlaying = async (page: Page) => {
+  if (await visible(page, "Skip ahead")) await page.getByRole("button", { name: "Skip ahead" }).first().click({ timeout: 1500 }).catch(() => undefined)
+}
+
 const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
   // Deal; check or match each betting round; lock a card and gain; keep playing once, then call.
   full: async (page, shot) => {
@@ -57,7 +62,7 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await click(page, /Deal a hand/)
     await page.waitForTimeout(1200)
     await shot("playback-1-mid")
-    if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+    await skipIfPlaying(page)
     await shot("playback-2-your-turn")
   },
   // Saved table: deal, reload without a seed, and the hand is still there.
@@ -73,7 +78,7 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
   "3d": async (page, shot) => {
     const settle = () => page.waitForTimeout(400)
     const skip = async () => {
-      if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+      await skipIfPlaying(page)
       await settle()
     }
     await shot("3d-1-lobby")
@@ -114,7 +119,7 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await page.locator("sabacc-3d").getByRole("button").first().waitFor()
     await click(page, /Deal a hand/)
     for (let moves = 0; moves < 2; ) {
-      if (await visible(page, "Skip ahead")) await click(page, "Skip ahead")
+      if (await visible(page, "Skip ahead")) await skipIfPlaying(page)
       else if (await visible(page, /^Match/)) (await click(page, /^Match/), moves++)
       else if (await visible(page, "Check")) (await click(page, "Check"), moves++)
       else if (await visible(page, "Gain a card")) (await click(page, "Gain a card"), moves++)

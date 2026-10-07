@@ -1,7 +1,5 @@
-import { css } from "lit"
-
-/** Base styles shared by every shadow root. Tokens come from global.css. */
-export const base = css`
+/** Base styles shared by every shadow root, as CSS text. Tokens come from global.css. */
+export const base = `
   :host { display: block; color: var(--text); font-family: var(--font-body); }
   *, *::before, *::after { box-sizing: border-box; }
   * { margin: 0; }
@@ -18,7 +16,8 @@ export const base = css`
   }
 `
 
-export const buttons = css`
+/** Buttons and selects, as CSS text. */
+export const buttons = `
   button, select {
     min-block-size: var(--tap);
     padding-inline: var(--space);

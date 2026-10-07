@@ -11,7 +11,7 @@ import { CardView, type Glow } from "./card-view.ts"
 import { betSpot, cardPlacement, CARD_Y, dealerSpot, handSpot, labelSpot, SPOTS, type CardRow } from "./layout.ts"
 import { ChipStack, Deck, makeDealerButton, TurnRing } from "./props.ts"
 import { burst, rollDice, tossChips } from "./effects.ts"
-import { renderPlate, renderPot } from "./plates.ts"
+import "./plates.ts"
 import { approach, easeInOutSine, Tweens } from "./motion.ts"
 
 export interface BoardView {
@@ -70,8 +70,8 @@ export class Board {
   private readonly handPot = new ChipStack()
   private readonly sabaccPot = new ChipStack()
   private readonly bets: Array<ChipStack> = []
-  private readonly plates: Array<{ el: HTMLElement; obj: CSS2DObject }> = []
-  private readonly pots: Array<HTMLElement> = []
+  private readonly plates: Array<{ el: HTMLElementTagNameMap["sabacc-plate"]; obj: CSS2DObject }> = []
+  private readonly pots: Array<HTMLElementTagNameMap["sabacc-pot"]> = []
   private readonly dealer = makeDealerButton()
   private readonly dealerTarget = new THREE.Vector3()
   private readonly ring = new TurnRing()
@@ -91,16 +91,15 @@ export class Board {
       stack.group.position.copy(at(betSpot(i, seats)))
       this.bets.push(stack)
       this.group.add(stack.group)
-      const el = document.createElement("div")
-      el.className = "plate"
+      const el = document.createElement("sabacc-plate")
       const obj = new CSS2DObject(el)
       obj.position.copy(at(labelSpot(i, seats), i === YOU ? 0.1 : 0.25))
       this.plates.push({ el, obj })
       this.group.add(obj)
     }
     for (const [spot, side] of [[SPOTS.handPot, "hand"], [SPOTS.sabaccPot, "sabacc"]] as const) {
-      const el = document.createElement("div")
-      el.className = `pot ${side}`
+      const el = document.createElement("sabacc-pot")
+      el.label = side === "hand" ? "Hand pot" : "Sabacc pot"
       const obj = new CSS2DObject(el)
       obj.position.copy(at([spot[0], spot[1] + 0.55], 0.05))
       this.pots.push(el)
@@ -194,7 +193,7 @@ export class Board {
     game.seats.forEach((s, i) => {
       const plate = this.plates[i]
       if (plate === undefined) return
-      renderPlate(plate.el, {
+      plate.el.plate = {
         seat: s,
         dealer: p !== undefined && game.dealer === s.index,
         active: toAct === s.index,
@@ -203,11 +202,11 @@ export class Board {
         mine: s.index === YOU && !view.spectator,
         presence: view.presence(s.index),
         winner: last?.winners.includes(s.index) ?? false,
-      })
+      }
     })
     const [hand, sabacc] = this.pots
-    if (hand !== undefined) renderPot(hand, "Hand pot", p === undefined ? 0 : handPot(game))
-    if (sabacc !== undefined) renderPot(sabacc, "Sabacc pot", game.sabaccPot)
+    if (hand !== undefined) hand.amount = p === undefined ? 0 : handPot(game)
+    if (sabacc !== undefined) sabacc.amount = game.sabaccPot
     if (view.instant) this.dealer.position.copy(this.dealerTarget)
   }
 

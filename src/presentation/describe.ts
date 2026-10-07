@@ -24,8 +24,15 @@ export const solo: Narrator = { name: seatName, isYou: (seat) => seat === YOU }
  * Narration for a game: seat names from the table, "You" for the viewer's seat.
  * `viewer` is undefined for a spectator, who is nobody at the table.
  */
-export const narratorFor = (game: Game, viewer: number | undefined): Narrator => ({
-  name: (seat) => (seat === viewer ? "You" : (game.seats[seat]?.name ?? `Opponent ${seat}`)),
+export const narratorFor = (game: Game, viewer: number | undefined): Narrator =>
+  narratorOf(
+    game.seats.map((s) => s.name),
+    viewer,
+  )
+
+/** The same from plain data (a component prop): seat names and the viewer's seat. */
+export const narratorOf = (names: ReadonlyArray<string>, viewer: number | undefined): Narrator => ({
+  name: (seat) => (seat === viewer ? "You" : (names[seat] ?? `Opponent ${seat}`)),
   isYou: (seat) => seat === viewer,
 })
 

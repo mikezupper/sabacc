@@ -1,23 +1,49 @@
 # Frontend conventions
 
 Applies to `src/components/`, `src/scene/`, `src/styles/`, `index.html` and `3d.html`.
-Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
+Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
-## Lit
+## Gyral
 
-- TypeScript strict with `experimentalDecorators: true` and
-  `useDefineForClassFields: false`. Never change those two.
-- Components read the store's signals through `SignalWatcher`; they never hold game
-  state in `@state()`. Local UI state (e.g. which dialog is open) may use `@state()`.
-- Events go up, data goes down. Components call `store.dispatch(...)`; they never
-  call domain functions that change the game.
-- Derived values go in `willUpdate()`, not `render()`.
-- Show what happened between your moves by playing back `store.last` beats with the
-  `Playback` controller. Never keep game state in a timer, and keep playback instant
-  under `prefers-reduced-motion`.
-- Styles live in `static styles = css\`...\``, built on the shared tokens in
-  `src/styles/shared.ts`.
+The UI is [Gyral](https://gyral.dev) 0.3: Model-View-Intent web components with their own
+view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
+from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
+
+- One loop per component: `intent` parses events into tagged messages, `update` has a pure
+  reducer for every tag, `view` is a pure template that **names intents**
+  (`data-intent=${i.Check}`) and never holds closures.
+- Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`.
+  Lists of stable things use `each` with pure rows and a module-level
+  `const i = intents<Msg>()`. Form state uses attributes (`value=${…}`), never `.value=`.
+  SVG goes inline in one `<svg>` per template (an SVG fragment can't be its own template).
+- **Game state stays in the store.** Components reach it only through the table driver
+  (`src/components/table-driver.ts`): `watchTable` streams a snapshot (game, last beats,
+  log, notice, room) into a `TableChanged` message, `play(move)` sends a move, `join(name)`
+  sits down at a multiplayer table. Each page provides it with `provideTable` in
+  `src/entry-table.ts`, imported before any component; tests provide it on a host element.
+- Show what happened between your moves by playing back the snapshot's `last` beats with
+  the pure model in `src/presentation/playback.ts` (timers are `@gyral/time` commands via
+  `nextBeat`). Never keep game state in a timer; playback is instant under
+  `prefers-reduced-motion` (the `reducedMotion` command).
+- Other browser effects are commands too (`src/components/browser-drivers.ts`): the page
+  address, navigation, the clipboard, a countdown clock. HTTP is `@gyral/http`.
+- Children talk up through outputs (`emit()`), parents listen with `child()` intents.
+  Object props use `prop.value(schema)` with the checks in `prop-schemas.ts`: they
+  validate the shape and never transform (Gyral keeps the value a property is set to and
+  skips the schema in production; a transforming schema only warns in development).
+- Booleans are presence props (`prop.boolean()`, default `false`): name them so the default
+  is the common case (`hide-new-table`, not `new-table`).
+- Styles: `styles: [base, buttons, css\`…\`]`; `src/styles/shared.ts` exports plain CSS text
+  built on the tokens in `global.css`.
 - Element names use the `sabacc-` prefix, one element per file, file name = element name.
+- Template rules are checked three times: ESLint in the editor (`npm run lint:templates`),
+  the runtime in dev and tests, and the compiler in `vite build` (a break fails the build).
+- `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
+- Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
+  Chromium: let the store's change arrive (a few microtasks), then `await settled()`.
+- Imperative widgets (the Three.js stage) sit behind a hook (`defineHook`). Hooks have no
+  cleanup, so such a widget must notice it was detached (the stage checks `isConnected`)
+  and report back through a DOM event an intent listens for.
 
 ## 3D view (`src/scene/`, `3d.html`)
 
@@ -32,22 +58,21 @@ Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 - Your cards are also listed as buttons in the controls (keyboard, screen readers);
   clicking a 3D card is a shortcut to the same choice.
 - The stage sits between the status bar and the controls, never under them, so your
-  cards stay visible. Name plates are HTML (CSS2DRenderer), styled in `hud-styles.ts`.
+  cards stay visible. Name plates and pot labels are Gyral components (`plates.ts`) placed
+  with CSS2DRenderer.
 - Under `prefers-reduced-motion` every snapshot is drawn instantly and effects are
   skipped. Without WebGL, show the fallback with a link to the classic table.
 
 ## Multiplayer in the views
 
-- Views read the `Store` interface only; whether it's local or remote is the store's
-  business. `store.room` (present only at a multiplayer table) carries connection,
-  host, spectator and presence signals.
-- Seat 0 is "you" except for a spectator. Use `tableContext(store, game)` for the
+- Views read the table snapshot only; whether the store is local or remote is the store's
+  business. The snapshot's `room` (present only at a multiplayer table) carries
+  connection, host, spectator and presence.
+- Seat 0 is "you" except for a spectator. Use `tableContext(table, game)` for the
   narrator (names), spectator flag, presence and which hands the last reveal showed;
   never assume seat 0 is yours or that a lobby reveal shows every hand.
 - `<sabacc-room>` is the one place for room UI: "Play with friends" in solo; name,
   invite link, players and the turn clock at a table (`compact` folds it away in 3D).
-- Set boolean properties that default to `true` as properties (`.newTable=${…}`), not
-  `?attr=`: an absent attribute never turns a default `true` off.
 
 ## HTML
 
@@ -70,12 +95,15 @@ Source skills: lit-web-apps, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Bundle
 
-- 233 KB / 76 KB gzip as of 2026-10-04, about three quarters Effect. The owner accepted
-  this: no size budget in CI, no lazy loading of save/restore, no move off Effect.
+- What each page loads (all chunks it reaches, gzip), 2026-10-07 after the move to Gyral:
+  classic page 278 KB / **90.4 KB** (Lit, before: 84.5 KB), 3D page 898 KB / **246.5 KB**
+  (before: 239.3 KB). Most of it is Effect; Gyral costs about 6–7 KB more than Lit did.
+  The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
-- The 3D page adds a ~620 KB / 160 KB gzip chunk (Three.js and the scene) that only
-  `3d.html` loads; the two pages share the Effect/Lit chunk. `chunkSizeWarningLimit`
-  is 700 KB for that reason.
+- The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only
+  `3d.html` loads it. `chunkSizeWarningLimit` is 700 KB for that reason.
+- Keep each entry's imports static (`src/entry-table.ts` first, then the components): a
+  dynamic import split the pages into eight chunks and cost about 6 KB gzip.
 
 ## SEO
 

@@ -1,4 +1,4 @@
-import { css } from "lit"
+import { css } from "@gyral/core"
 
 /**
  * Layout for <sabacc-3d>: status bar on top, the 3D stage in the middle (never covered
@@ -145,56 +145,10 @@ export const hud = css`
     text-align: center;
   }
 
-  /* Name plates and pot labels, placed over the table by CSS2DRenderer. */
-  .plate {
-    display: grid;
-    justify-items: center;
-    gap: 1px;
-    min-inline-size: 7.5rem;
-    padding: 0.3rem 0.6rem;
-    border: 1px solid oklch(80% 0.1 82 / 0.35);
-    border-radius: 10px;
-    background: oklch(14% 0.035 262 / 0.82);
-    color: oklch(95% 0.012 262);
-    font-size: 0.78rem;
-    line-height: 1.25;
-    text-align: center;
-    box-shadow: 0 6px 18px oklch(5% 0.02 262 / 0.5);
-    transition: border-color 200ms, box-shadow 200ms, opacity 200ms;
-  }
-  .plate strong { font-size: 0.9rem; letter-spacing: 0.02em; }
-  .plate .credits { font-variant-numeric: tabular-nums; color: oklch(85% 0.03 262); }
-  .plate .tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; }
-  .plate .tags:empty { display: none; }
-  .plate .tag { padding: 0 0.45em; border-radius: 999px; background: oklch(30% 0.04 262); font-size: 0.7rem; font-weight: 600; }
-  .plate .tag.dealer, .plate .tag.bet { color: oklch(84% 0.15 82); }
-  .plate .tag.win { background: oklch(80% 0.15 82); color: oklch(18% 0.04 262); }
-  .plate .tag.loss { color: oklch(75% 0.17 27); }
-  .plate .hand { font-weight: 700; color: oklch(85% 0.15 150); }
-  .plate .hand[data-bomb] { color: oklch(74% 0.17 27); }
-  .plate .hand[data-sabacc] { color: oklch(84% 0.15 82); }
-  .plate[data-active] { border-color: oklch(82% 0.12 210); box-shadow: 0 0 0 2px oklch(82% 0.12 210 / 0.7), 0 6px 18px oklch(5% 0.02 262 / 0.5); }
-  .plate[data-winner] { border-color: oklch(82% 0.15 82); box-shadow: 0 0 0 2px oklch(82% 0.15 82), 0 0 28px oklch(82% 0.15 82 / 0.6); }
-  .plate[data-out] { opacity: 0.6; }
-  .pot {
-    padding: 0.15rem 0.55rem;
-    border-radius: 999px;
-    background: oklch(14% 0.035 262 / 0.75);
-    color: oklch(92% 0.02 262);
-    font-size: 0.72rem;
-    white-space: nowrap;
-  }
-  .pot strong { color: oklch(84% 0.15 82); font-variant-numeric: tabular-nums; }
-
   @media (max-width: 40rem) {
     dl.status div:nth-child(n + 4) { display: none; }
-    .plate { min-inline-size: 0; padding: 0.15rem 0.4rem; font-size: 0.68rem; }
-    .plate strong { font-size: 0.75rem; }
-    .plate .hand, .plate .tags { font-size: 0.62rem; }
     .side { inline-size: min(16rem, 60vw); grid-row: 1; justify-self: end; }
     .shift { grid-column: 1 / -1; grid-row: 2; font-size: var(--step--1); }
     .seed { display: none; }
-    /* The status bar already shows both pots. */
-    .pot { display: none; }
   }
 `
