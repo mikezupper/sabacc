@@ -1,12 +1,12 @@
 // One player's seat. Opponents' cards stay face-down until `reveal`. On your drawing
 // turn (`card-actions`), each free card offers Lock and Trade, sent up as outputs.
 import { Option } from "effect"
-import { css, define, emit, html, intents, nothing, prop, type PropsOf, type Stateless } from "@gyral/core"
+import { css, define, html, intents, nothing, outputs, prop, type PropsOf, type Stateless } from "@gyral/core"
 import { YOU, type Seat } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { formatCredits } from "../presentation/describe.ts"
 import { base, buttons } from "../styles/shared.ts"
-import { checked, seatResultSchema, seatSchema } from "./prop-schemas.ts"
+import { isSeatResult, isSeat } from "./prop-schemas.ts"
 import "./sabacc-card.ts"
 
 /** Lock or Trade one of your cards (the parent sends the move). */
@@ -15,14 +15,13 @@ export type SeatOutput = { readonly _tag: "CardAction"; readonly action: "lock" 
 type Msg = { readonly _tag: "Lock"; readonly cardId: number } | { readonly _tag: "Trade"; readonly cardId: number }
 
 const i = intents<Msg>()
+const emit = outputs<SeatOutput>()
 
 const PRESENCE = ["here", "away", "ai"] as const
-const presenceSchema = checked<(typeof PRESENCE)[number] | undefined>("here, away or ai", (u): u is (typeof PRESENCE)[number] | undefined =>
-  u === undefined || PRESENCE.some((p) => p === u),
-)
+const isPresence = (u: unknown): u is (typeof PRESENCE)[number] => PRESENCE.some((p) => p === u)
 
 const props = {
-  seat: prop.value(seatSchema),
+  seat: prop.value(isSeat),
   reveal: prop.boolean(),
   winner: prop.boolean(),
   dealer: prop.boolean(),
@@ -30,11 +29,11 @@ const props = {
   cardActions: prop.boolean(),
   canLock: prop.boolean(),
   canTrade: prop.boolean(),
-  result: prop.value(seatResultSchema),
+  result: prop.value(isSeatResult),
   /** Watching a multiplayer table: seat 0 is someone else's. */
   spectating: prop.boolean(),
   /** Multiplayer: is the seat's person here, away, or is the AI playing it? */
-  presence: prop.value(presenceSchema),
+  presence: prop.value(isPresence),
 }
 type Props = PropsOf<typeof props>
 
@@ -59,8 +58,8 @@ export const SabaccSeat = define<Stateless, Msg, Props, SeatOutput>("sabacc-seat
     },
   },
   update: {
-    Lock: (s, m) => [s, [emit({ _tag: "CardAction", action: "lock", cardId: m.cardId } satisfies SeatOutput)]],
-    Trade: (s, m) => [s, [emit({ _tag: "CardAction", action: "trade", cardId: m.cardId } satisfies SeatOutput)]],
+    Lock: (s, m) => [s, [emit({ _tag: "CardAction", action: "lock", cardId: m.cardId })]],
+    Trade: (s, m) => [s, [emit({ _tag: "CardAction", action: "trade", cardId: m.cardId })]],
   },
   view: (_s, _i, { props: p }) => {
     const seat = p.seat

@@ -5,8 +5,8 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3: Model-View-Intent web components with their own
-view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
+The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.1` until it's
+on npm): Model-View-Intent web components with their own view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
 from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 
 - One loop per component: `intent` parses events into tagged messages, `update` has a pure
@@ -15,11 +15,12 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 - Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`.
   Lists of stable things use `each` with pure rows and a module-level
   `const i = intents<Msg>()`. Form state uses attributes (`value=${…}`), never `.value=`.
-  SVG goes inline in one `<svg>` per template (an SVG fragment can't be its own template).
-- **Game state stays in the store.** Components reach it only through the table driver
-  (`src/components/table-driver.ts`): `watchTable` streams a snapshot (game, last beats,
-  log, notice, room) into a `TableChanged` message, `play(move)` sends a move, `join(name)`
-  sits down at a multiplayer table. Each page provides it with `provideTable` in
+  SVG: an `<svg>` element in an `html` template; optional SVG parts are `svg` fragments
+  inside it (`sabacc-card`).
+- **Game state stays in the store.** Components reach it only through the table drivers
+  (`src/components/table-driver.ts`): `watchTable` (a Gyral `subscription()`) streams a
+  snapshot (game, last beats, log, notice, room) into a `TableChanged` message,
+  `play(move)` sends a move, `join(name)` sits down at a multiplayer table. Each page provides it with `provideTable` in
   `src/entry-table.ts`, imported before any component; tests provide it on a host element.
 - Show what happened between your moves by playing back the snapshot's `last` beats with
   the pure model in `src/presentation/playback.ts` (timers are `@gyral/time` commands via
@@ -27,10 +28,10 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
   `prefers-reduced-motion` (the `reducedMotion` command).
 - Other browser effects are commands too (`src/components/browser-drivers.ts`): the page
   address, navigation, the clipboard, a countdown clock. HTTP is `@gyral/http`.
-- Children talk up through outputs (`emit()`), parents listen with `child()` intents.
-  Object props use `prop.value(schema)` with the checks in `prop-schemas.ts`: they
-  validate the shape and never transform (Gyral keeps the value a property is set to and
-  skips the schema in production; a transforming schema only warns in development).
+- Children talk up through outputs: `const emit = outputs<Out>()` types them; parents
+  listen with `child()` intents. Object props use `prop.value(guard)` with the plain type
+  guards in `prop-schemas.ts` (Gyral keeps the value a property is set to; production
+  builds drop the checks).
 - Booleans are presence props (`prop.boolean()`, default `false`): name them so the default
   is the common case (`hide-new-table`, not `new-table`).
 - Styles: `styles: [base, buttons, css\`…\`]`; `src/styles/shared.ts` exports plain CSS text
@@ -40,10 +41,13 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
   the runtime in dev and tests, and the compiler in `vite build` (a break fails the build).
 - `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
 - Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
-  Chromium: let the store's change arrive (a few microtasks), then `await settled()`.
-- Imperative widgets (the Three.js stage) sit behind a hook (`defineHook`). Hooks have no
-  cleanup, so such a widget must notice it was detached (the stage checks `isConnected`)
-  and report back through a DOM event an intent listens for.
+  Chromium and `await settled()` (it waits until messages stop, the store's snapshots
+  included).
+- An imperative widget with a lifecycle (the Three.js stage) is its own plain custom
+  element: one property set from the view (`.view=${…}`), setup in `connectedCallback`,
+  teardown in `disconnectedCallback`, and DOM events an intent listens for
+  (`data-intent-on="stage-event"`). Small behaviours on one element can be hooks
+  (`defineHook`). This is the Gyral team's recommended pattern.
 
 ## 3D view (`src/scene/`, `3d.html`)
 
@@ -95,9 +99,13 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 
 ## Bundle
 
-- What each page loads (all chunks it reaches, gzip), 2026-10-07 after the move to Gyral:
-  classic page 278 KB / **90.4 KB** (Lit, before: 84.5 KB), 3D page 898 KB / **246.5 KB**
-  (before: 239.3 KB). Most of it is Effect; Gyral costs about 6–7 KB more than Lit did.
+- What each page loads (all chunks it reaches, gzip), 2026-10-07: classic page 270 KB /
+  **88.0 KB** (Lit, before Gyral: 84.5 KB), 3D page 890 KB / **244.0 KB** (Lit: 239.3 KB).
+  Most of it is Effect. The stores use our own `Cell` (`src/state/cell.ts`) instead of a
+  signals library (−2.4 KB), and Vite's modulepreload polyfill is off.
+- On Gyral 0.3.1-next.1 with `gyralVitePreset({ clientOnly: true })` (no hydration code;
+  nothing here is server-rendered) and `delay` from `@gyral/time/delay`: classic **86.1 KB**,
+  3D **242.2 KB** gzip.
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
 - The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only

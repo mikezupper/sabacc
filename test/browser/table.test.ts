@@ -1,5 +1,5 @@
 import { settled } from "@gyral/core"
-import { Signal } from "signal-polyfill"
+import { cell } from "../../src/state/cell.ts"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Card } from "../../src/domain/cards.ts"
 import { Command, GameEvent, YOU, type Game } from "../../src/domain/model.ts"
@@ -10,11 +10,8 @@ import { createStore, type Store } from "../../src/state/store.ts"
 
 type TableEl = InstanceType<typeof SabaccTable>
 
-/** Let the store's change reach the table (microtasks), then let every component render. */
-const flush = async () => {
-  for (let n = 0; n < 20; n++) await Promise.resolve()
-  await settled()
-}
+/** Gyral's settled() waits until messages stop arriving, the store's snapshots included. */
+const flush = () => settled()
 
 /** Mount a table on `store`, provided by a host element as the page does. */
 const mountOn = async (store: Store) => {
@@ -210,7 +207,7 @@ describe("saved table (sabacc-3nc)", () => {
 describe("multiplayer table (sabacc-kiq)", () => {
   it("offers New table only to the host", async () => {
     // Regression: `?new-table=false` left the property's default `true` in place.
-    const signal = <T>(v: T) => new Signal.State(v)
+    const signal = <T>(v: T) => cell(v)
     const asGuest = (host: boolean) => ({
       ...createStore(1),
       room: {

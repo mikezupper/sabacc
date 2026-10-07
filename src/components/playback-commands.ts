@@ -2,7 +2,7 @@
 // this turns its next delay into a timer that sends `Advance` back. One lane per
 // component, so a new playback replaces the old timer.
 import type { Command } from "@gyral/core"
-import { delay } from "@gyral/time"
+import { delay } from "@gyral/time/delay"
 import type { GameEvent } from "../domain/model.ts"
 import { beatDelay, nextDelay, type Playback } from "../presentation/playback.ts"
 

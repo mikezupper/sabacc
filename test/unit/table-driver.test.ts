@@ -1,7 +1,7 @@
 // The table driver: Gyral components reach the store only through it.
 import { describe, expect, it } from "vitest"
 import { Command } from "../../src/domain/model.ts"
-import { play, tableDriver, watchTable, type TableSnapshot } from "../../src/components/table-driver.ts"
+import { play, tableDriver, tableWatch, watchTable, type TableSnapshot } from "../../src/components/table-driver.ts"
 import { createStore } from "../../src/state/store.ts"
 
 const tick = () => new Promise((r) => setTimeout(r, 0))
@@ -19,7 +19,12 @@ describe("table driver", () => {
     const store = createStore(42)
     const seen: Array<TableSnapshot> = []
     const abort = new AbortController()
-    void tableDriver(store).run({ _tag: "Watch" }, { signal: abort.signal, emit: (s) => s && seen.push(s) })
+    // A subscription runs until aborted; then its promise rejects with the abort.
+    const running = Promise.resolve(tableWatch(store).run(undefined, { signal: abort.signal, emit: (s) => seen.push(s) }))
+    const ended = running.then(
+      () => "resolved",
+      (e: unknown) => (e instanceof Error ? e.name : String(e)),
+    )
     expect(seen).toHaveLength(1)
     expect(seen[0]?.game.phase._tag).toBe("Lobby")
 
@@ -35,6 +40,7 @@ describe("table driver", () => {
     expect(seen.length).toBe(before + 1)
 
     abort.abort()
+    expect(await ended).toBe("AbortError")
     store.dispatch(Command.StartHand())
     await tick()
     expect(seen.length).toBe(before + 1)
@@ -45,6 +51,6 @@ describe("table driver", () => {
     expect(move.input).toEqual({ _tag: "Play", command: Command.Check() })
     const watching = watchTable((s) => ({ _tag: "TableChanged" as const, s }))
     expect(watching.key).toBe("table")
-    expect(watching.concurrency).toBe("switch")
+    expect(watching.driver.name).toBe("table-watch")
   })
 })

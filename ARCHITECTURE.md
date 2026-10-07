@@ -36,10 +36,10 @@ server/  (Node only)  → protocol/, domain/             rooms, timers, SQLite, 
 |---|---|---|
 | `src/domain/` | `effect`, other `src/domain/` files | `@gyral/*`, `src/state`, `src/components`, DOM globals |
 | `src/protocol/` | `effect`, `src/domain` | everything else |
-| `src/state/` | `effect`, `signal-polyfill`, `src/protocol`, `src/domain` | `@gyral/*`, `src/components` |
+| `src/state/` | `effect`, `src/protocol`, `src/domain` | `@gyral/*`, `src/components` |
 | `src/server/` | `effect`, `@effect/platform`, `@effect/platform-node`, `node:*`, `src/protocol`, `src/domain` | `@gyral/*`, `three`, browser layers |
 | `src/presentation/` | `effect`, `src/domain` | `@gyral/*`, `three`, `src/state`, `src/components` |
-| `src/components/` | `@gyral/core`, `@gyral/time`, `@gyral/http`, `signal-polyfill`, `effect`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
+| `src/components/` | `@gyral/core`, `@gyral/time`, `@gyral/http`, `effect`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
 | `src/scene/` | `three`, `@gyral/*`, `effect`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
 | `src/styles/` | nothing (plain CSS text) | everything |
 | `src/entry-client.ts`, `src/entry-3d.ts`, `src/entry-table.ts` | anything | — |
@@ -66,7 +66,7 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files �
    resolve in **one** transition (`advance` in `flow.ts`). Each beat pairs an event
    with the game right after it. No timers carry game state, so no state can go
    stale between steps.
-4. The store sets the `game` signal, appends the events to `log`, sets `last` to the
+4. The store sets its `game` cell (`src/state/cell.ts`), appends the events to `log`, sets `last` to the
    beats and, for a saved table, writes the game to storage. The table driver's
    `watchTable` notices the change and sends each watching component one
    `TableChanged` message with a snapshot (game, beats, log, notice, room).
@@ -81,11 +81,12 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files �
 
 ## The 3D view
 
-`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) is a Gyral component like the classic table;
-its view puts a hook (`src/scene/stage-hook.ts`) on the stage element, which mounts the
-Three.js `Stage` and hands it each snapshot to draw (`Stage.show`). The stage reports
-picks, hovers and a missing WebGL as one DOM event (`stage-event`) that an intent turns
-into a message, and shuts itself down when its element leaves the page.
+`<sabacc-3d>` (`src/scene/sabacc-3d.ts`) is a Gyral component like the classic table.
+Its view renders `<sabacc-stage>` (`src/scene/sabacc-stage.ts`), a plain custom element
+that owns the Three.js `Stage`: it builds it when connected, hands it each snapshot set
+on its `.view` property (`Stage.show`), and tears it down in `disconnectedCallback`. The
+stage reports picks, hovers and a missing WebGL as one DOM event (`stage-event`) that an
+intent turns into a message.
 `Board` (`src/scene/board.ts`) keeps one object per card id and moves it towards the
 placement `layout.ts` computes for that snapshot, so dealing, trading, folding and the
 reveal animate without any game logic in the scene. A new beat adds one-off effects
@@ -99,7 +100,7 @@ the classic table. Both pages share the saved table.
 
 1. `POST /api/rooms` opens a table (`src/server/rooms.ts`); its link is `?room=CODE` on
    either page. `bootStore` (`src/state/boot.ts`) then makes a **remote store**
-   (`src/state/remote-store.ts`) with the same signals as the local one.
+   (`src/state/remote-store.ts`) with the same cells as the local one.
 2. The browser sends `Join` (name + seat token) and `Act` (a player command) as
    Schema-checked JSON (`src/protocol/messages.ts`). The server decodes every message.
 3. Each table is a `Room` (`src/server/room.ts`): it runs `applyCommand(game, command,
@@ -152,7 +153,7 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | Store ⇄ components (snapshot, moves, join) | `src/components/table-driver.ts`, provided in `src/entry-table.ts` |
 | Page address, navigation, clipboard, clock, reduced motion | `src/components/browser-drivers.ts` |
 | Prop schemas (identity-preserving) | `src/components/prop-schemas.ts` |
-| Stage hook, 3D name plates | `src/scene/stage-hook.ts`, `src/scene/plates.ts` |
+| Stage element, 3D name plates | `src/scene/sabacc-stage.ts`, `src/scene/plates.ts` |
 | Action controls (both views) | `src/components/sabacc-controls.ts` |
 | Seed and store start-up (both pages) | `src/state/boot.ts` |
 | 3D element, HUD | `src/scene/sabacc-3d.ts`, `src/scene/hud-styles.ts` |

@@ -6,7 +6,6 @@ import { newTable } from "../../src/domain/table.ts"
 import { Board } from "../../src/scene/board.ts"
 import { provideTable } from "../../src/components/table-driver.ts"
 import { Sabacc3d } from "../../src/scene/sabacc-3d.ts"
-import { stageOf } from "../../src/scene/stage-hook.ts"
 import { createStore, type Store } from "../../src/state/store.ts"
 
 type Table3d = InstanceType<typeof Sabacc3d>
@@ -16,17 +15,11 @@ const controls = (el: Table3d) => shadow(el).querySelector("sabacc-controls")!
 const button = (el: Table3d, text: string) =>
   [...shadow(controls(el)).querySelectorAll("button")].find((b) => b.textContent?.trim().startsWith(text))
 const frame = () => new Promise((r) => requestAnimationFrame(() => r(undefined)))
-/** The Three.js stage mounted by the view's hook. */
-const stage = (el: Table3d) => {
-  const host = shadow(el).querySelector(".stage")
-  return host === null ? undefined : stageOf(host)
-}
+/** The Three.js stage inside the view's <sabacc-stage>. */
+const stage = (el: Table3d) => shadow(el).querySelector("sabacc-stage")?.stage
 
-/** Let the store's change reach the view (microtasks), then let every component render. */
-const flush = async () => {
-  for (let n = 0; n < 20; n++) await Promise.resolve()
-  await settled()
-}
+/** Gyral's settled() waits until messages stop arriving, the store's snapshots included. */
+const flush = () => settled()
 
 const mount = async (seed = 42) => {
   const store = createStore(seed)
@@ -78,6 +71,23 @@ describe("<sabacc-3d>", () => {
     expect(stage(el)!.frames).toBeGreaterThan(0)
     expect(shadow(el).querySelector("canvas")).not.toBeNull()
     expect(shadow(el).querySelector(".fallback")).toBeNull()
+  })
+
+  it("tears the stage down when the view leaves the page, and builds a new one when it returns", async () => {
+    const { el } = await mount()
+    const first = stage(el)!
+    const host = el.parentElement!
+    el.remove()
+    expect(first.disposed).toBe(true)
+    expect(stage(el)).toBeUndefined()
+    host.append(el)
+    await flush()
+    await frame()
+    const second = stage(el)
+    expect(second).toBeDefined()
+    expect(second).not.toBe(first)
+    await frame()
+    expect(second!.frames).toBeGreaterThan(0)
   })
 
   it("deals through the shared controls and puts every card on the table", async () => {

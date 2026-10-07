@@ -1,8 +1,5 @@
-import { Signal } from "signal-polyfill"
 import { Effect, Either, Option, Random } from "effect"
-
-/** A signal: the views watch these through the table driver (components/table-driver.ts). */
-export const signal = <T>(value: T): Signal.State<T> => new Signal.State(value)
+import { cell, type Cell } from "./cell.ts"
 import { applyCommand } from "../domain/engine.ts"
 import { eventsOf, type Beat, type Command, type Game, type GameError, type GameEvent } from "../domain/model.ts"
 import { newTable } from "../domain/table.ts"
@@ -20,13 +17,13 @@ export type Connection = "naming" | "connecting" | "open" | "reconnecting" | "go
 /** A multiplayer table's connection state; absent in solo play. */
 export interface RoomState {
   readonly code: string
-  readonly connection: Signal.State<Connection>
-  readonly spectator: Signal.State<boolean>
-  readonly host: Signal.State<boolean>
-  readonly presence: Signal.State<Presence>
+  readonly connection: Cell<Connection>
+  readonly spectator: Cell<boolean>
+  readonly host: Cell<boolean>
+  readonly presence: Cell<Presence>
   /** A connection problem to show (not a game rule: those are `notice`). */
-  readonly problem: Signal.State<string | undefined>
-  readonly name: Signal.State<string>
+  readonly problem: Cell<string | undefined>
+  readonly name: Cell<string>
   /** Join with this display name (asked once, then remembered). */
   readonly join: (name: string) => void
 }
@@ -35,11 +32,11 @@ export interface RoomState {
 export interface Store {
   /** Solo: the seed that replays this table. Multiplayer: 0 (the server keeps its seed). */
   readonly seed: number
-  readonly game: Signal.State<Game>
-  readonly log: Signal.State<ReadonlyArray<GameEvent>>
+  readonly game: Cell<Game>
+  readonly log: Cell<ReadonlyArray<GameEvent>>
   /** Beats (event + snapshot) from the most recent successful command only, for playback. */
-  readonly last: Signal.State<ReadonlyArray<Beat>>
-  readonly notice: Signal.State<Option.Option<GameError>>
+  readonly last: Cell<ReadonlyArray<Beat>>
+  readonly notice: Cell<Option.Option<GameError>>
   readonly dispatch: (command: Command) => void
   /** True when this table came back from storage rather than starting fresh. */
   readonly restored: boolean
@@ -68,11 +65,11 @@ export const createStore = (seed: number, options: StoreOptions = {}): Store => 
   const saved = Option.flatMap(storage, (s) => Effect.runSync(loadGame(s)))
   /** True when this table came back from storage rather than starting fresh. */
   const restored = Option.isSome(saved)
-  const game = signal<Game>(Option.getOrElse(saved, newTable))
-  const log = signal<ReadonlyArray<GameEvent>>([])
+  const game = cell<Game>(Option.getOrElse(saved, newTable))
+  const log = cell<ReadonlyArray<GameEvent>>([])
   /** Beats (event + snapshot) from the most recent successful command only, for playback. */
-  const last = signal<ReadonlyArray<Beat>>([])
-  const notice = signal<Option.Option<GameError>>(Option.none())
+  const last = cell<ReadonlyArray<Beat>>([])
+  const notice = cell<Option.Option<GameError>>(Option.none())
 
   const dispatch = (command: Command): void => {
     const result = Effect.runSync(Effect.either(applyCommand(game.get(), command).pipe(Effect.withRandom(random))))

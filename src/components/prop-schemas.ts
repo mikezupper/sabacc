@@ -1,9 +1,9 @@
-// Standard Schemas for Gyral props that carry app values (properties, not attributes).
-// They check the shape without transforming it. Gyral validates property sets in
-// development only and always keeps the value it was given; a schema that transformed
-// (a decoding schema) would only trigger its development warning.
+// Checks for Gyral props that carry app values (properties, not attributes): plain type
+// guards, which `prop.value()` accepts directly. Gyral runs them on property sets in
+// development only and always keeps the value it was given; production builds drop them.
+// `checked()` turns a guard into a Standard Schema, for APIs that need one (`@gyral/http`).
 import type { Card } from "../domain/cards.ts"
-import type { Game, Seat, SeatResult } from "../domain/model.ts"
+import type { Game, GameEvent, Seat, SeatResult } from "../domain/model.ts"
 
 interface Issue {
   readonly message: string
@@ -31,36 +31,27 @@ export const checked = <T>(expected: string, guard: (value: unknown) => value is
 const isRecord = (u: unknown): u is Readonly<Record<string, unknown>> => typeof u === "object" && u !== null
 
 /** A game as the views draw it: its shape, not its rules (the engine guarantees those). */
-export const gameSchema = checked<Game>("a game", (u): u is Game => {
+export const isGame = (u: unknown): u is Game => {
   if (!isRecord(u) || !Array.isArray(u["seats"]) || typeof u["sabaccPot"] !== "number") return false
   const phase = u["phase"]
   return isRecord(phase) && (phase["_tag"] === "Lobby" || phase["_tag"] === "Playing")
-})
+}
 
-/** A card id, or nothing chosen. */
-export const cardIdSchema = checked<number | undefined>("a card id", (u): u is number | undefined => u === undefined || Number.isInteger(u))
+/** A card id (nothing chosen is `undefined`, which a prop leaves unset). */
+export const isCardId = (u: unknown): u is number => Number.isInteger(u)
 
-/** A card (face up), or none: the card is shown face down. */
-export const cardSchema = checked<Card | undefined>("a card", (u): u is Card | undefined =>
-  u === undefined || (isRecord(u) && (u["_tag"] === "Suited" || u["_tag"] === "Face") && Number.isInteger(u["id"]) && typeof u["value"] === "number"),
-)
+/** A card (no card: shown face down). */
+export const isCard = (u: unknown): u is Card =>
+  isRecord(u) && (u["_tag"] === "Suited" || u["_tag"] === "Face") && Number.isInteger(u["id"]) && typeof u["value"] === "number"
 
 /** A seat at the table. */
-export const seatSchema = checked<Seat | undefined>("a seat", (u): u is Seat | undefined =>
-  u === undefined || (isRecord(u) && Number.isInteger(u["index"]) && typeof u["name"] === "string" && Array.isArray(u["hand"])),
-)
+export const isSeat = (u: unknown): u is Seat => isRecord(u) && Number.isInteger(u["index"]) && typeof u["name"] === "string" && Array.isArray(u["hand"])
 
 /** One seat's line of a hand result. */
-export const seatResultSchema = checked<SeatResult | undefined>("a seat result", (u): u is SeatResult | undefined =>
-  u === undefined || (isRecord(u) && Number.isInteger(u["seat"]) && typeof u["won"] === "number"),
-)
+export const isSeatResult = (u: unknown): u is SeatResult => isRecord(u) && Number.isInteger(u["seat"]) && typeof u["won"] === "number"
 
-/** A list of anything the views draw as is (events, beats): checked to be an array. */
-export const listSchema = <T>(what: string) => checked<ReadonlyArray<T>>(`a list of ${what}`, (u): u is ReadonlyArray<T> => Array.isArray(u))
+/** Events as the log draws them (an array; the engine guarantees each event). */
+export const isEventList = (u: unknown): u is ReadonlyArray<GameEvent> => Array.isArray(u)
 
 /** Seat names, by seat. */
-export const namesSchema = checked<ReadonlyArray<string>>("seat names", (u): u is ReadonlyArray<string> => Array.isArray(u) && u.every((x) => typeof x === "string"))
-
-/** A seat number, or nobody (a spectator). */
-export const seatNumberSchema = checked<number | undefined>("a seat number", (u): u is number | undefined => u === undefined || Number.isInteger(u))
-
+export const isNames = (u: unknown): u is ReadonlyArray<string> => Array.isArray(u) && u.every((x) => typeof x === "string")

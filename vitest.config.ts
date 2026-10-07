@@ -9,10 +9,14 @@ export default defineConfig({
       {
         // Components run in real Chromium with Gyral's runtime template checks. Pre-bundle
         // Gyral so Vite never discovers it mid-run (which reloads the test page).
-        ...gyralVitePreset({ optimize: ["@gyral/core", "@gyral/time", "@gyral/http", "signal-polyfill"] }),
+        ...gyralVitePreset({ clientOnly: true, optimize: ["@gyral/core", "@gyral/time", "@gyral/time/delay", "@gyral/http"] }),
         test: {
           name: "browser",
           include: ["test/browser/**/*.test.ts"],
+          // The 3D tests draw WebGL in software (SwiftShader); on a busy machine (CI shares
+          // the dev machine) they can pass 15 s.
+          testTimeout: 30_000,
+          hookTimeout: 30_000,
           browser: {
             enabled: true,
             headless: true,

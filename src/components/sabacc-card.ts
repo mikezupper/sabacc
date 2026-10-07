@@ -1,10 +1,10 @@
 // One card: face up (with `card`), face down (without), optionally locked in the
-// interference field. Stateless: the view is a function of its props. One inline <svg>
-// per side (SVG fragments can't be templates of their own in Gyral 0.3).
-import { css, define, html, prop, type PropsOf, type Stateless } from "@gyral/core"
+// interference field. Stateless: the view is a function of its props. One <svg> per side;
+// the optional parts (field frame, suit marks, name lines) are `svg` fragments.
+import { css, define, html, nothing, prop, svg, type PropsOf, type Stateless } from "@gyral/core"
 import { cardTitle, describeCard, type Card, type Suit } from "../domain/cards.ts"
 import { base } from "../styles/shared.ts"
-import { cardSchema } from "./prop-schemas.ts"
+import { isCard } from "./prop-schemas.ts"
 
 /** Suit marks as path data, centred on (0, 0), about 12 units across. */
 const SUIT_PATH: Record<Suit, string> = {
@@ -27,16 +27,24 @@ const wrap = (name: string, width = 13): ReadonlyArray<string> =>
 const kind = (c: Card): string => (c._tag === "Suited" ? "kind-suited" : c.value === 0 ? "kind-idiot" : "kind-face")
 
 const props = {
-  card: prop.value(cardSchema),
+  card: prop.value(isCard),
   /** In the interference field: frozen against shifts. */
   locked: prop.boolean(),
 }
 type Props = PropsOf<typeof props>
 
+/** The dashed interference-field frame around a locked card. */
+const fieldMark = svg`<rect class="field" x="-3" y="-3" width="86" height="126" rx="12"></rect>
+  <text class="field-label" x="40" y="-6" text-anchor="middle">FIELD</text>`
+
+const suitMark = (d: string, transform: string) => svg`<path class="suit" d=${d} transform=${transform}></path>`
+
+/** A face card's name, or a ranked card's title, one line per row. */
+const nameLine = (line: string, row: number) => svg`<text class="name" x="40" y=${84 + row * 11} text-anchor="middle">${line}</text>`
+
 const back = (locked: boolean) =>
   html`<svg viewBox="0 0 80 120" class="back-card" role="img" aria-label=${locked ? "Face-down card in the interference field" : "Face-down card"}>
-    <rect class="field" x="-3" y="-3" width="86" height="126" rx="12" display=${locked ? "inline" : "none"}></rect>
-    <text class="field-label" x="40" y="-6" text-anchor="middle" display=${locked ? "inline" : "none"}>FIELD</text>
+    ${locked ? fieldMark : nothing}
     <rect class="back" x="1.5" y="1.5" width="77" height="117" rx="9"></rect>
     <path class="back-art" d="M14 14 L66 106 M66 14 L14 106"></path>
     <circle class="back-art" cx="40" cy="60" r="16"></circle>
@@ -46,22 +54,20 @@ const face = (c: Card, locked: boolean) => {
   const label = `${describeCard(c)}${locked ? ", in the interference field" : ""}`
   const corner = c._tag === "Suited" ? (c.value > 11 ? cardTitle(c).slice(0, 2) : String(c.value)) : signed(c.value)
   const names = c._tag === "Face" ? wrap(c.name) : c.value > 11 ? [cardTitle(c)] : []
-  const suit = c._tag === "Suited" ? SUIT_PATH[c.suit] : ""
-  // A suited card without a name carries a big suit mark where the name would go.
-  const bigSuit = c._tag === "Suited" && names.length === 0
   return html`<svg viewBox="0 0 80 120" class=${kind(c)} role="img" aria-label=${label}>
     <title>${label}</title>
-    <rect class="field" x="-3" y="-3" width="86" height="126" rx="12" display=${locked ? "inline" : "none"}></rect>
-    <text class="field-label" x="40" y="-6" text-anchor="middle" display=${locked ? "inline" : "none"}>FIELD</text>
+    ${locked ? fieldMark : nothing}
     <rect class="face" x="1.5" y="1.5" width="77" height="117" rx="9"></rect>
     <text class="corner" x="8" y="17">${corner}</text>
     <text class="corner" x="72" y="111" text-anchor="end">${corner}</text>
     <text class="value" x="40" y="58" text-anchor="middle" dominant-baseline="middle">${signed(c.value)}</text>
-    <path class="suit" d=${suit} transform="translate(12 28) scale(0.7)"></path>
-    <path class="suit" d=${bigSuit ? suit : ""} transform="translate(40 90)"></path>
-    <text class="name" x="40" y="84" text-anchor="middle">${names[0] ?? ""}</text>
-    <text class="name" x="40" y="95" text-anchor="middle">${names[1] ?? ""}</text>
-    <text class="name" x="40" y="106" text-anchor="middle">${names[2] ?? ""}</text>
+    ${c._tag === "Suited" ? suitMark(SUIT_PATH[c.suit], "translate(12 28) scale(0.7)") : nothing}
+    ${names.length > 0
+      ? names.map(nameLine)
+      : c._tag === "Suited"
+        ? // A suited card without a name carries a big suit mark where the name would go.
+          suitMark(SUIT_PATH[c.suit], "translate(40 90)")
+        : nothing}
   </svg>`
 }
 
