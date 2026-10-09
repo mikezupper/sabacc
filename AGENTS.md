@@ -22,6 +22,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 |---|---|
 | What the game rules are (source of truth) | [docs/product-specs/sabacc-rules.md](docs/product-specs/sabacc-rules.md) |
 | How our rules compare with Star Wars lore | [docs/references/sabacc-lore.md](docs/references/sabacc-lore.md) |
+| Feedback for the Gyral team (rough edges, suggestions) | [docs/references/gyral-feedback.md](docs/references/gyral-feedback.md) |
 | Layers, allowed imports, data flow | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Why things are the way they are | [docs/design-docs/core-beliefs.md](docs/design-docs/core-beliefs.md) |
 | Gyral, HTML, CSS and SEO conventions | [docs/FRONTEND.md](docs/FRONTEND.md) |
