@@ -18,7 +18,7 @@ jobs:
     runs-on: [self-hosted, sabacc]
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
       - name: Toolchain
         run: node --version && npm --version
       - run: npm ci --no-audit --no-fund
