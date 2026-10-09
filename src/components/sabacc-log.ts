@@ -17,7 +17,7 @@ type Props = PropsOf<typeof props>
 
 const SOLO = ["You", "Opponent 1", "Opponent 2", "Opponent 3", "Opponent 4"]
 
-export const SabaccLog = define<Stateless, never, Props>("sabacc-log", {
+export const SabaccLog = define<Stateless, never, Props>()("sabacc-log", {
   props,
   intent: {},
   update: {},

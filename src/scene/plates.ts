@@ -27,7 +27,7 @@ const status = (s: Seat): string =>
 
 const plateProps = { plate: prop.value(isPlate) }
 
-export const SabaccPlate = define<Stateless, never, PropsOf<typeof plateProps>>("sabacc-plate", {
+export const SabaccPlate = define<Stateless, never, PropsOf<typeof plateProps>>()("sabacc-plate", {
   props: plateProps,
   intent: {},
   update: {},
@@ -99,7 +99,7 @@ const potProps = {
   amount: prop.number({ default: 0 }),
 }
 
-export const SabaccPot = define<Stateless, never, PropsOf<typeof potProps>>("sabacc-pot", {
+export const SabaccPot = define<Stateless, never, PropsOf<typeof potProps>>()("sabacc-pot", {
   props: potProps,
   intent: {},
   update: {},

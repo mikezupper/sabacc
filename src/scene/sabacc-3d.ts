@@ -145,17 +145,14 @@ const hudView = (s: State, table: TableSnapshot, game: Game, i: { readonly Contr
   `
 }
 
-export const Sabacc3d = define<State, Msg>("sabacc-3d", {
+export const Sabacc3d = define<State, Msg>()("sabacc-3d", {
   init: () => [
     { table: undefined, playback: noPlayback, reduce: false, selected: undefined, hover: undefined, failed: false, reset: 0 },
     [watchTable((table): Msg => ({ _tag: "TableChanged", table })), reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce }))],
   ],
   intent: {
     Controls: child(SabaccControls, (out) => ({ _tag: "Controls" as const, out })),
-    Stage: ({ event }) => {
-      const detail = event instanceof CustomEvent ? (event.detail as unknown) : undefined
-      return isStageEvent(detail) ? { _tag: "Stage", event: detail } : undefined
-    },
+    Stage: ({ detail }) => (isStageEvent(detail) ? { _tag: "Stage", event: detail } : undefined),
     ResetView: () => ({ _tag: "ResetView" }),
   },
   update: {

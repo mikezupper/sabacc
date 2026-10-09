@@ -7,7 +7,7 @@
 // (the 3D view also picks by clicking a card) and offers Lock / Trade for it. Without
 // `pick`, the classic table shows Lock / Trade under each card instead.
 import { Option } from "effect"
-import { css, define, each, html, intents, nothing, outputs, prop, type PropsOf } from "@gyral/core"
+import { css, define, each, html, intentsOf, nothing, outputs, prop, type PropsOf, type TemplateResult } from "@gyral/core"
 import { cardTitle, describeCard, type Card } from "../domain/cards.ts"
 import { BUY_IN, MIN_BET } from "../domain/constants.ts"
 import { Command, YOU, type Game, type Seat } from "../domain/model.ts"
@@ -61,7 +61,7 @@ type Msg =
 /** What the parent hears: skip the playback, or the card you chose (pick mode). */
 export type ControlsOutput = { readonly _tag: "Skip" } | { readonly _tag: "CardSelected"; readonly cardId: number | undefined }
 
-const i = intents<Msg>()
+const i = intentsOf<typeof SabaccControls>()
 const emit = outputs<ControlsOutput>()
 
 const you = (game: Game | undefined): Seat | undefined => (game === undefined ? undefined : Option.getOrUndefined(seatAt(game, YOU)))
@@ -91,12 +91,12 @@ const chosen = (p: ControlsProps): Card | undefined => freeCards(p).find((c) => 
 const signed = (n: number): string => (n > 0 ? `+${n}` : String(n))
 
 /** One card to choose in pick mode (a pure row: reads only its arguments). */
-const PickRow = (c: Card, pressed: boolean) =>
+const PickRow = (c: Card, pressed: boolean): TemplateResult =>
   html`<button type="button" value=${c.id} aria-pressed=${pressed ? "true" : "false"} aria-label=${describeCard(c)} data-intent=${i.Choose}>
     ${cardTitle(c)} ${signed(c.value)}
   </button>`
 
-const picker = (p: ControlsProps, canLock: boolean, canTrade: boolean) => {
+const picker = (p: ControlsProps, canLock: boolean, canTrade: boolean): TemplateResult => {
   const pickedId = chosen(p)?.id
   return html`<div class="pick" role="group" aria-label="Choose a card to lock or trade">
       ${each(freeCards(p), (c) => c.id, PickRow, (c) => c.id === pickedId)}
@@ -105,7 +105,7 @@ const picker = (p: ControlsProps, canLock: boolean, canTrade: boolean) => {
     <button type="button" data-intent=${i.Trade} ?disabled=${pickedId === undefined || !canTrade}>Trade</button>`
 }
 
-export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>("sabacc-controls", {
+export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>()("sabacc-controls", {
   props,
   init: () => ({ amount: MIN_BET }),
   intent: {

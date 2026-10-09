@@ -5,16 +5,18 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.1` until it's
+The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.6` until it's
 on npm): Model-View-Intent web components with their own view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
-from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
+from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.md).
 
 - One loop per component: `intent` parses events into tagged messages, `update` has a pure
   reducer for every tag, `view` is a pure template that **names intents**
   (`data-intent=${i.Check}`) and never holds closures.
 - Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`.
-  Lists of stable things use `each` with pure rows and a module-level
-  `const i = intents<Msg>()`. Form state uses attributes (`value=${…}`), never `.value=`.
+  Components are `define<State, Msg, Props, Out>()(tag, spec)` (two calls); the intent
+  names are the keys of `intent`. Lists of stable things use `each` with pure rows; a row
+  that names intents reads a module-level `const i = intentsOf<typeof Component>()` and
+  declares its return type (`: TemplateResult`), or TypeScript reports a circular type. Form state uses attributes (`value=${…}`), never `.value=`.
   SVG: an `<svg>` element in an `html` template; optional SVG parts are `svg` fragments
   inside it (`sabacc-card`).
 - **Game state stays in the store.** Components reach it only through the table drivers
@@ -43,6 +45,10 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
 - Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
   Chromium and `await settled()` (it waits until messages stop, the store's snapshots
   included).
+- Failures Gyral catches (a driver without `onFailure`, a throwing reducer or view) are
+  reported with `reportError`, so a browser test fails on them. A test that makes a
+  component fail on purpose wraps it in `collectErrors()` from `@gyral/testing` (see the
+  "no table provided" test in `test/browser/table-driver.test.ts`).
 - An imperative widget with a lifecycle (the Three.js stage) is its own plain custom
   element: one property set from the view (`.view=${…}`), setup in `connectedCallback`,
   teardown in `disconnectedCallback`, and DOM events an intent listens for
@@ -105,7 +111,8 @@ from Lit is recorded in the [exec plan](exec-plans/active/2026-10-gyral-0.3.md).
   signals library (−2.4 KB), and Vite's modulepreload polyfill is off.
 - On Gyral 0.3.1-next.1 with `gyralVitePreset({ clientOnly: true })` (no hydration code;
   nothing here is server-rendered) and `delay` from `@gyral/time/delay`: classic **86.1 KB**,
-  3D **242.2 KB** gzip.
+  3D **242.2 KB** gzip. On 0.3.1-next.6 (2026-10-09): classic **86.9 KB**, 3D **243.0 KB**
+  (+0.8 KB each, almost all of it Gyral's error channel).
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
 - The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only
