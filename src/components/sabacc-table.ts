@@ -139,7 +139,7 @@ const board = (s: State, table: TableSnapshot, game: Game, i: { readonly Seat: s
   `
 }
 
-export const SabaccTable = define<State, Msg>("sabacc-table", {
+export const SabaccTable = define<State, Msg>()("sabacc-table", {
   init: () => [
     { table: undefined, playback: noPlayback, reduce: false },
     [watchTable((table): Msg => ({ _tag: "TableChanged", table })), reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce }))],

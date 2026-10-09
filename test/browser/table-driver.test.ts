@@ -1,6 +1,7 @@
 // The table driver inside a real Gyral component: provided by an ancestor, watched from
 // `init`, moves sent from an intent, the store's change rendered back.
 import { define, html, settled } from "@gyral/core"
+import { collectErrors } from "@gyral/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { Command } from "../../src/domain/model.ts"
 import { play, provideTable, watchTable, type TableSnapshot } from "../../src/components/table-driver.ts"
@@ -12,7 +13,7 @@ interface State {
 }
 type Msg = { readonly _tag: "TableChanged"; readonly table: TableSnapshot } | { readonly _tag: "Deal" }
 
-const Probe = define<State, Msg>("test-table-probe", {
+const Probe = define<State, Msg>()("test-table-probe", {
   init: () => [{ phase: "", beats: 0 }, [watchTable((table): Msg => ({ _tag: "TableChanged", table }))]],
   intent: { Deal: () => ({ _tag: "Deal" }) },
   update: {
@@ -50,5 +51,21 @@ describe("table driver in a Gyral component", () => {
     await settled()
     store.dispatch(Command.StartHand())
     await vi.waitFor(() => expect(probe.shadowRoot?.querySelector("output")?.textContent).toBe("Playing"))
+  })
+
+  it("reports a clear error through Gyral's error channel when no table is provided", async () => {
+    const collected = collectErrors()
+    try {
+      const probe = new Probe()
+      document.body.append(probe)
+      await settled()
+      await vi.waitFor(() => expect(collected.errors.length).toBeGreaterThan(0))
+      const [failure] = collected.errors
+      expect(failure?.component).toBe("test-table-probe")
+      expect(failure?.phase).toBe("command")
+      expect(String(failure?.cause)).toContain("provideTable")
+    } finally {
+      collected.stop()
+    }
   })
 })

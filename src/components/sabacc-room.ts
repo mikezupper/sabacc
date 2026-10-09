@@ -117,7 +117,7 @@ const seated = (s: State, i: { readonly Copy: string }, table: TableSnapshot, ro
   </div>`
 }
 
-export const SabaccRoom = define<State, Msg, Props>("sabacc-room", {
+export const SabaccRoom = define<State, Msg, Props>()("sabacc-room", {
   props,
   init: () => [
     { table: undefined, page: undefined, creating: false, error: undefined, copied: false, now: undefined },

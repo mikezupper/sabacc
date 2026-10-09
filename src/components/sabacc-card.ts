@@ -71,7 +71,7 @@ const face = (c: Card, locked: boolean) => {
   </svg>`
 }
 
-export const SabaccCard = define<Stateless, never, Props>("sabacc-card", {
+export const SabaccCard = define<Stateless, never, Props>()("sabacc-card", {
   props,
   intent: {},
   update: {},

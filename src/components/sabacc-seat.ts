@@ -1,7 +1,7 @@
 // One player's seat. Opponents' cards stay face-down until `reveal`. On your drawing
 // turn (`card-actions`), each free card offers Lock and Trade, sent up as outputs.
 import { Option } from "effect"
-import { css, define, html, intents, nothing, outputs, prop, type PropsOf, type Stateless } from "@gyral/core"
+import { css, define, html, nothing, outputs, prop, type PropsOf, type Stateless } from "@gyral/core"
 import { YOU, type Seat } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
 import { formatCredits } from "../presentation/describe.ts"
@@ -14,7 +14,6 @@ export type SeatOutput = { readonly _tag: "CardAction"; readonly action: "lock" 
 
 type Msg = { readonly _tag: "Lock"; readonly cardId: number } | { readonly _tag: "Trade"; readonly cardId: number }
 
-const i = intents<Msg>()
 const emit = outputs<SeatOutput>()
 
 const PRESENCE = ["here", "away", "ai"] as const
@@ -45,7 +44,7 @@ const cardId = (value: string | undefined): number | undefined => {
   return value !== undefined && value !== "" && Number.isInteger(n) ? n : undefined
 }
 
-export const SabaccSeat = define<Stateless, Msg, Props, SeatOutput>("sabacc-seat", {
+export const SabaccSeat = define<Stateless, Msg, Props, SeatOutput>()("sabacc-seat", {
   props,
   intent: {
     Lock: ({ value }) => {
@@ -61,7 +60,7 @@ export const SabaccSeat = define<Stateless, Msg, Props, SeatOutput>("sabacc-seat
     Lock: (s, m) => [s, [emit({ _tag: "CardAction", action: "lock", cardId: m.cardId })]],
     Trade: (s, m) => [s, [emit({ _tag: "CardAction", action: "trade", cardId: m.cardId })]],
   },
-  view: (_s, _i, { props: p }) => {
+  view: (_s, i, { props: p }) => {
     const seat = p.seat
     if (seat === undefined) return nothing
     const mine = seat.index === YOU && !p.spectating
