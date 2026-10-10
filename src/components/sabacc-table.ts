@@ -1,9 +1,9 @@
 // The classic table. It watches the table store through the table driver, plays each
 // transition back beat by beat (opponents' turns, shifts) as model state with timer
-// commands, and composes the seats, controls, room panel and log. The store's game is
+// subscriptions, and composes the seats, controls, room panel and log. The store's game is
 // already final throughout; playback only chooses which snapshot to draw.
 import { Option } from "effect"
-import { child, css, define, html, nothing, type Command as GyralCommand } from "@gyral/core"
+import { child, css, define, html, nothing, type IntentNames } from "@gyral/core"
 import { Command, YOU, type Game } from "../domain/model.ts"
 import { deckSize, handPot, playing, seatAt } from "../domain/table.ts"
 import { formatCredits } from "../presentation/describe.ts"
@@ -39,22 +39,22 @@ export interface State {
 
 export type Msg =
   | { readonly _tag: "TableChanged"; readonly table: TableSnapshot }
-  | { readonly _tag: "Advance"; readonly run: number }
+  | { readonly _tag: "Advance"; readonly run: number; readonly shown: number }
   | { readonly _tag: "Skip" }
   | { readonly _tag: "Motion"; readonly reduce: boolean }
   | { readonly _tag: "Seat"; readonly out: SeatOutput }
   | { readonly _tag: "Controls"; readonly out: ControlsOutput }
 
-const advance = (run: number): Msg => ({ _tag: "Advance", run })
+const advance = (run: number, shown: number): Msg => ({ _tag: "Advance", run, shown })
 
 /** A new snapshot: a new transition starts a playback (the first one is shown as it stands). */
-const tableChanged = (s: State, table: TableSnapshot): State | readonly [State, ReadonlyArray<GyralCommand<Msg>>] => {
+const tableChanged = (s: State, table: TableSnapshot): State => {
   if (s.table !== undefined && table.last === s.table.last) return { ...s, table }
   const playback = startPlayback(s.playback, table.last, s.table === undefined || s.reduce)
-  return [{ ...s, table, playback }, nextBeat(playback, advance)]
+  return { ...s, table, playback }
 }
 
-const seatView = (game: Game, ctx: TableContext, index: number, i: { readonly Seat: string }) => {
+const seatView = (game: Game, ctx: TableContext, index: number, i: IntentNames<"Seat">) => {
   const lastHand = game.phase._tag === "Lobby" ? Option.getOrUndefined(game.phase.lastHand) : undefined
   const p = Option.getOrUndefined(playing(game))
   return html`<sabacc-seat
@@ -69,7 +69,7 @@ const seatView = (game: Game, ctx: TableContext, index: number, i: { readonly Se
   ></sabacc-seat>`
 }
 
-const board = (s: State, table: TableSnapshot, game: Game, i: { readonly Seat: string; readonly Controls: string }) => {
+const board = (s: State, table: TableSnapshot, game: Game, i: IntentNames<"Seat" | "Controls">) => {
   const ctx = tableContext(table, game)
   const you = Option.getOrUndefined(seatAt(game, YOU))
   const p = Option.getOrUndefined(playing(game))
@@ -140,9 +140,11 @@ const board = (s: State, table: TableSnapshot, game: Game, i: { readonly Seat: s
 }
 
 export const SabaccTable = define<State, Msg>()("sabacc-table", {
-  init: () => [
-    { table: undefined, playback: noPlayback, reduce: false },
-    [watchTable((table): Msg => ({ _tag: "TableChanged", table })), reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce }))],
+  init: () => ({ table: undefined, playback: noPlayback, reduce: false }),
+  subscriptions: (s) => [
+    watchTable((table): Msg => ({ _tag: "TableChanged", table })),
+    reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce })),
+    ...nextBeat(s.playback, advance),
   ],
   intent: {
     Seat: child(SabaccSeat, (out) => ({ _tag: "Seat" as const, out })),
@@ -151,8 +153,8 @@ export const SabaccTable = define<State, Msg>()("sabacc-table", {
   update: {
     TableChanged: (s, m) => tableChanged(s, m.table),
     Advance: (s, m) => {
-      const playback = advancePlayback(s.playback, m.run)
-      return playback === s.playback ? s : [{ ...s, playback }, nextBeat(playback, advance)]
+      const playback = advancePlayback(s.playback, m.run, m.shown)
+      return playback === s.playback ? s : { ...s, playback }
     },
     Skip: (s) => ({ ...s, playback: skipPlayback(s.playback) }),
     Motion: (s, m) => ({ ...s, reduce: m.reduce, playback: m.reduce ? skipPlayback(s.playback) : s.playback }),
@@ -213,9 +215,3 @@ export const SabaccTable = define<State, Msg>()("sabacc-table", {
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-table": InstanceType<typeof SabaccTable>
-  }
-}

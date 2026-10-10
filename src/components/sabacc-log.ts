@@ -19,8 +19,6 @@ const SOLO = ["You", "Opponent 1", "Opponent 2", "Opponent 3", "Opponent 4"]
 
 export const SabaccLog = define<Stateless, never, Props>()("sabacc-log", {
   props,
-  intent: {},
-  update: {},
   view: (_s, _i, { props: p }) => {
     const who = narratorOf(p.names.length > 0 ? p.names : SOLO, p.spectator ? undefined : YOU)
     return html`<details>
@@ -59,9 +57,3 @@ export const SabaccLog = define<Stateless, never, Props>()("sabacc-log", {
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-log": InstanceType<typeof SabaccLog>
-  }
-}

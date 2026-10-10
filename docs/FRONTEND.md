@@ -5,13 +5,15 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.6` until it's
+The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.9` until it's
 on npm): Model-View-Intent web components with their own view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
 from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.md).
 
 - One loop per component: `intent` parses events into tagged messages, `update` has a pure
   reducer for every tag, `view` is a pure template that **names intents**
   (`data-intent=${i.Check}`) and never holds closures.
+  Payload-free intents use `Name: true`; pure views omit empty `intent` and `update`
+  tables. Helper templates name their intent shape with `IntentNames<"Name" | "Other">`.
 - Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`.
   Components are `define<State, Msg, Props, Out>()(tag, spec)` (two calls); the intent
   names are the keys of `intent`. Lists of stable things use `each` with pure rows; a row
@@ -24,12 +26,23 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   snapshot (game, last beats, log, notice, room) into a `TableChanged` message,
   `play(move)` sends a move, `join(name)` sits down at a multiplayer table. Each page provides it with `provideTable` in
   `src/entry-table.ts`, imported before any component; tests provide it on a host element.
+  Typed `tableMoves` and `tableSnapshots` tokens have no default implementation. Missing
+  providers report G0043 with the driver and component; bind them through `provideTable`.
+- Continuous table and reduced-motion watches belong in `subscriptions`, which restart
+  after genuine removal and reattachment. Starting them in `init` loses that recovery.
+  A move in the same task preserves them. The room clock is a conditional `every(1000, …)`
+  subscription while a deadline exists; it stops when the deadline disappears.
 - Show what happened between your moves by playing back the snapshot's `last` beats with
   the pure model in `src/presentation/playback.ts` (timers are `@gyral/time` commands via
-  `nextBeat`). Never keep game state in a timer; playback is instant under
-  `prefers-reduced-motion` (the `reducedMotion` command).
+  `nextBeat`). The pending beat is a state-derived subscription keyed by its run and
+  step, with both guarded in `Advance`; consecutive equal delays still restart for
+  each step. Genuine reattachment resumes the current beat with its full delay; moves
+  and unrelated snapshots preserve elapsed time. Skip and reduced motion cancel the
+  timer. Never keep game state in a timer; playback is instant under
+  `prefers-reduced-motion` (the `reducedMotion` subscription).
 - Other browser effects are commands too (`src/components/browser-drivers.ts`): the page
-  address, navigation, the clipboard, a countdown clock. HTTP is `@gyral/http`.
+  address, navigation and the clipboard. Commands that need no reply omit handlers and
+  return `Command<never>`. Import timers from `@gyral/time`; HTTP is `@gyral/http`.
 - Children talk up through outputs: `const emit = outputs<Out>()` types them; parents
   listen with `child()` intents. Object props use `prop.value(guard)` with the plain type
   guards in `prop-schemas.ts` (Gyral keeps the value a property is set to; production
@@ -39,12 +52,18 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
 - Styles: `styles: [base, buttons, css\`…\`]`; `src/styles/shared.ts` exports plain CSS text
   built on the tokens in `global.css`.
 - Element names use the `sabacc-` prefix, one element per file, file name = element name.
+- `npm run typecheck` runs `gyral-types` before `tsc`, generating all nine Gyral tag
+  declarations in ignored `.gyral/elements.d.ts` (explicitly included in tsconfig).
+  Only the plain `sabacc-stage` needs a handwritten declaration. No special
+  `useDefineForClassFields` setting is needed.
 - Template rules are checked three times: ESLint in the editor (`npm run lint:templates`),
   the runtime in dev and tests, and the compiler in `vite build` (a break fails the build).
 - `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
 - Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
   Chromium and `await settled()` (it waits until messages stop, the store's snapshots
   included).
+  Use `inputsFor(commands, tableMoves)` for typed move assertions. Reconnect tests must
+  await teardown while detached; a same-task move does not exercise stopped subscriptions.
 - Failures Gyral catches (a driver without `onFailure`, a throwing reducer or view) are
   reported with `reportError`, so a browser test fails on them. A test that makes a
   component fail on purpose wraps it in `collectErrors()` from `@gyral/testing` (see the
@@ -113,6 +132,9 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   nothing here is server-rendered) and `delay` from `@gyral/time/delay`: classic **86.1 KB**,
   3D **242.2 KB** gzip. On 0.3.1-next.6 (2026-10-09): classic **86.9 KB**, 3D **243.0 KB**
   (+0.8 KB each, almost all of it Gyral's error channel).
+  After the complete next.9 upgrade (2026-10-10), current JS + CSS totals across each
+  page's chunks are **87.2 KB classic / 242.3 KB 3D**, gzip level 9 without filename or
+  timestamp headers. The subscription lifecycle and playback recovery are included.
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
 - The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only

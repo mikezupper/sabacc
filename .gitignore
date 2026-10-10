@@ -4,6 +4,7 @@ node_modules/
 compose.override.yml
 dist/
 .drive/
+.gyral/
 .vitest-attachments/
 test/browser/__screenshots__/
 

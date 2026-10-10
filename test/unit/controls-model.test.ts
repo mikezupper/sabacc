@@ -1,5 +1,6 @@
 // <sabacc-controls> as a model: messages in, state and commands out. No DOM, no store.
-import { initial, step } from "@gyral/testing"
+import type { Command as GyralCommand } from "@gyral/core"
+import { initial, inputsFor, step } from "@gyral/testing"
 import { Effect, Random } from "effect"
 import { describe, expect, it } from "vitest"
 import { MIN_BET } from "../../src/domain/constants.ts"
@@ -7,6 +8,7 @@ import { applyCommand } from "../../src/domain/engine.ts"
 import { Command, YOU, type Game } from "../../src/domain/model.ts"
 import { newTable } from "../../src/domain/table.ts"
 import { SabaccControls, type ControlsProps } from "../../src/components/sabacc-controls.ts"
+import { tableMoves } from "../../src/components/table-driver.ts"
 
 const spec = SabaccControls.spec
 const props = (over: Partial<ControlsProps> = {}): ControlsProps => ({
@@ -25,11 +27,8 @@ const after = (...commands: ReadonlyArray<Command>): Game =>
   commands.reduce((g, c) => Effect.runSync(applyCommand(g, c).pipe(Effect.withRandom(Random.make(42)))).game, newTable())
 
 /** The moves a step sent to the table, as game commands. */
-const moves = (commands: ReadonlyArray<{ readonly input: unknown }>) =>
-  commands.flatMap((c) => {
-    const input = c.input as { readonly _tag?: string; readonly command?: Command }
-    return input._tag === "Play" && input.command !== undefined ? [input.command] : []
-  })
+const moves = <M>(commands: ReadonlyArray<GyralCommand<M>>) =>
+  inputsFor(commands, tableMoves).flatMap((input) => input._tag === "Play" ? [input.command] : [])
 
 describe("<sabacc-controls> model", () => {
   it("starts with the minimum bet as the draft", () => {

@@ -3,7 +3,7 @@
 // tumble), drawn by the Three.js stage (<sabacc-stage>), with the shared HUD pieces
 // (prompt, <sabacc-controls>, <sabacc-room>, <sabacc-log>) around it.
 import { Option } from "effect"
-import { child, define, html, nothing, type Command as GyralCommand } from "@gyral/core"
+import { child, define, html, nothing, type IntentNames } from "@gyral/core"
 import { OPPONENT_COUNT } from "../domain/constants.ts"
 import { YOU, type Game } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
@@ -50,14 +50,14 @@ export interface State {
 
 export type Msg =
   | { readonly _tag: "TableChanged"; readonly table: TableSnapshot }
-  | { readonly _tag: "Advance"; readonly run: number }
+  | { readonly _tag: "Advance"; readonly run: number; readonly shown: number }
   | { readonly _tag: "Skip" }
   | { readonly _tag: "Motion"; readonly reduce: boolean }
   | { readonly _tag: "Controls"; readonly out: ControlsOutput }
   | { readonly _tag: "Stage"; readonly event: StageEvent }
   | { readonly _tag: "ResetView" }
 
-const advance = (run: number): Msg => ({ _tag: "Advance", run })
+const advance = (run: number, shown: number): Msg => ({ _tag: "Advance", run, shown })
 
 /** Your free cards you may pick right now: your draw, outside the field, nothing playing. */
 const pickable = (s: State, game: Game): ReadonlySet<number> => {
@@ -74,16 +74,16 @@ const tidy = (s: State): State => {
   return pickable(s, frame(s.playback, s.table.game)).has(s.selected) ? s : { ...s, selected: undefined }
 }
 
-const tableChanged = (s: State, table: TableSnapshot): State | readonly [State, ReadonlyArray<GyralCommand<Msg>>] => {
+const tableChanged = (s: State, table: TableSnapshot): State => {
   if (s.table !== undefined && table.last === s.table.last) return tidy({ ...s, table })
   const playback = startPlayback(s.playback, table.last, s.table === undefined || s.reduce)
-  return [tidy({ ...s, table, playback }), nextBeat(playback, advance, sceneBeatDelay)]
+  return tidy({ ...s, table, playback })
 }
 
 const isStageEvent = (u: unknown): u is StageEvent =>
   typeof u === "object" && u !== null && ["Picked", "Hovered", "Failed"].includes((u as { _tag?: string })._tag ?? "")
 
-const hudView = (s: State, table: TableSnapshot, game: Game, i: { readonly Controls: string; readonly ResetView: string }) => {
+const hudView = (s: State, table: TableSnapshot, game: Game, i: IntentNames<"Controls" | "ResetView">) => {
   const ctx = tableContext(table, game)
   const room = html`<sabacc-room compact></sabacc-room>`
   if (table.room?.connection === "naming") return html`<div class="overlay"><div class="naming">${room}</div></div>`
@@ -146,20 +146,22 @@ const hudView = (s: State, table: TableSnapshot, game: Game, i: { readonly Contr
 }
 
 export const Sabacc3d = define<State, Msg>()("sabacc-3d", {
-  init: () => [
-    { table: undefined, playback: noPlayback, reduce: false, selected: undefined, hover: undefined, failed: false, reset: 0 },
-    [watchTable((table): Msg => ({ _tag: "TableChanged", table })), reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce }))],
+  init: () => ({ table: undefined, playback: noPlayback, reduce: false, selected: undefined, hover: undefined, failed: false, reset: 0 }),
+  subscriptions: (s) => [
+    watchTable((table): Msg => ({ _tag: "TableChanged", table })),
+    reducedMotion((reduce): Msg => ({ _tag: "Motion", reduce })),
+    ...nextBeat(s.playback, advance, sceneBeatDelay),
   ],
   intent: {
     Controls: child(SabaccControls, (out) => ({ _tag: "Controls" as const, out })),
     Stage: ({ detail }) => (isStageEvent(detail) ? { _tag: "Stage", event: detail } : undefined),
-    ResetView: () => ({ _tag: "ResetView" }),
+    ResetView: true,
   },
   update: {
     TableChanged: (s, m) => tableChanged(s, m.table),
     Advance: (s, m) => {
-      const playback = advancePlayback(s.playback, m.run)
-      return playback === s.playback ? s : [tidy({ ...s, playback }), nextBeat(playback, advance, sceneBeatDelay)]
+      const playback = advancePlayback(s.playback, m.run, m.shown)
+      return playback === s.playback ? s : tidy({ ...s, playback })
     },
     Skip: (s) => tidy({ ...s, playback: skipPlayback(s.playback) }),
     Motion: (s, m) => ({ ...s, reduce: m.reduce, playback: m.reduce ? skipPlayback(s.playback) : s.playback }),
@@ -213,9 +215,3 @@ export const Sabacc3d = define<State, Msg>()("sabacc-3d", {
   },
   styles: [base, buttons, hud],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-3d": InstanceType<typeof Sabacc3d>
-  }
-}

@@ -2,12 +2,12 @@
 // table. At a table: your name (asked once), the invite link, who's here, and whose
 // clock is running. Shared by the classic table and the 3D view; it watches the table
 // itself, so a parent only places it.
-import { css, define, html, nothing, prop, type PropsOf } from "@gyral/core"
-import { delay } from "@gyral/time/delay"
+import { css, define, html, nothing, prop, type IntentNames, type PropsOf } from "@gyral/core"
+import { delay, every } from "@gyral/time"
 import { request, type HttpError } from "@gyral/http"
 import { YOU } from "../domain/model.ts"
 import { base, buttons } from "../styles/shared.ts"
-import { copy, go, ticking, where, type Where } from "./browser-drivers.ts"
+import { copy, go, where, type Where } from "./browser-drivers.ts"
 import { checked } from "./prop-schemas.ts"
 import { join, watchTable, type RoomSnapshot, type TableSnapshot } from "./table-driver.ts"
 
@@ -53,14 +53,14 @@ const openFailure = (e: HttpError): string => {
 
 const inviteOf = (s: State, room: RoomSnapshot): string => (s.page === undefined ? `?room=${room.code}` : `${s.page.origin}${s.page.pathname}?room=${room.code}`)
 
-const solo = (s: State, i: { readonly PlayWithFriends: string }, compact: boolean) =>
+const solo = (s: State, i: IntentNames<"PlayWithFriends">, compact: boolean) =>
   html`<div class="row">
     <button type="button" data-intent=${i.PlayWithFriends} ?disabled=${s.creating}>${s.creating ? "Opening a table…" : "Play with friends"}</button>
     ${compact ? nothing : html`<span class="muted">Opens a private table and gives you a link to share.</span>`}
     ${s.error ? html`<span class="problem" role="alert">${s.error}</span>` : nothing}
   </div>`
 
-const naming = (room: RoomSnapshot, i: { readonly Join: string }) =>
+const naming = (room: RoomSnapshot, i: IntentNames<"Join">) =>
   html`<form class="box" data-intent=${i.Join}>
     <p>Table <strong class="code">${room.code}</strong>: choose a name to sit down.</p>
     <div class="row">
@@ -83,7 +83,7 @@ const players = (table: TableSnapshot, room: RoomSnapshot) => {
   </ul>`
 }
 
-const seated = (s: State, i: { readonly Copy: string }, table: TableSnapshot, room: RoomSnapshot, compact: boolean) => {
+const seated = (s: State, i: IntentNames<"Copy">, table: TableSnapshot, room: RoomSnapshot, compact: boolean) => {
   const deadline = room.presence.deadline
   const left = deadline === undefined || s.now === undefined ? undefined : Math.max(0, Math.ceil((deadline.at - s.now) / 1000))
   const clock =
@@ -121,24 +121,23 @@ export const SabaccRoom = define<State, Msg, Props>()("sabacc-room", {
   props,
   init: () => [
     { table: undefined, page: undefined, creating: false, error: undefined, copied: false, now: undefined },
-    [watchTable((table): Msg => ({ _tag: "TableChanged", table })), where((page): Msg => ({ _tag: "Located", page }))],
+    [where((page): Msg => ({ _tag: "Located", page }))],
+  ],
+  subscriptions: (s) => [
+    watchTable((table): Msg => ({ _tag: "TableChanged", table })),
+    ...(s.table?.room?.presence.deadline === undefined ? [] : [every(1000, (now): Msg => ({ _tag: "Tick", now }), "clock")]),
   ],
   intent: {
-    PlayWithFriends: () => ({ _tag: "PlayWithFriends" }),
+    PlayWithFriends: true,
     Join: ({ formData }) => {
       const name = String(formData?.get("name") ?? "").trim()
       return name === "" ? undefined : { _tag: "Join", name }
     },
-    Copy: () => ({ _tag: "Copy" }),
+    Copy: true,
   },
   update: {
     // The clock runs only while someone's turn is counting down.
-    TableChanged: (s, m) => {
-      const counting = m.table.room?.presence.deadline !== undefined
-      const was = s.table?.room?.presence.deadline !== undefined
-      const next = { ...s, table: m.table }
-      return counting === was ? next : [counting ? next : { ...next, now: undefined }, [ticking(counting, (now): Msg => ({ _tag: "Tick", now }))]]
-    },
+    TableChanged: (s, m) => ({ ...s, table: m.table, now: m.table.room?.presence.deadline === undefined ? undefined : s.now }),
     Located: (s, m) => ({ ...s, page: m.page }),
     PlayWithFriends: (s) => [
       { ...s, creating: true, error: undefined },
@@ -165,7 +164,7 @@ export const SabaccRoom = define<State, Msg, Props>()("sabacc-room", {
     Copied: (s) => [{ ...s, copied: true }, [delay<Msg>(2000, { _tag: "CopyDone" }, { key: "copied", concurrency: "switch" })]],
     CopyDone: (s) => ({ ...s, copied: false }),
     CopyFailed: (s) => ({ ...s, error: "Copy failed; select the link and copy it." }),
-    Tick: (s, m) => ({ ...s, now: m.now }),
+    Tick: (s, m) => s.table?.room?.presence.deadline === undefined ? s : { ...s, now: m.now },
   },
   view: (s, i, { props: p }) => {
     const table = s.table
@@ -224,9 +223,3 @@ export const SabaccRoom = define<State, Msg, Props>()("sabacc-room", {
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-room": InstanceType<typeof SabaccRoom>
-  }
-}

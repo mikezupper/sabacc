@@ -47,7 +47,7 @@ describe("table driver", () => {
   })
 
   it("describes moves and the watch as commands (data), keyed so a re-watch replaces the old one", () => {
-    const move = play<never>(Command.Check())
+    const move = play(Command.Check())
     expect(move.input).toEqual({ _tag: "Play", command: Command.Check() })
     const watching = watchTable((s) => ({ _tag: "TableChanged" as const, s }))
     expect(watching.key).toBe("table")

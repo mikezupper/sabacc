@@ -281,3 +281,240 @@ and an element for anything that owns a render loop or WebGL context, or emits e
 
 We didn't use `@gyral/ssr` or `@gyral/router`, so this says nothing about server rendering or
 routing. Partial hydration is listed from the docs, not from use.
+
+## Appendix: next.9 assessment (2026-10-10)
+
+This appendix records the assessment before implementation. Assessment bead `sabacc-j5h`;
+the working app was still on next.6. We tested the next.9 migration and optional cleanups in isolated
+scratch copies of Sabacc `e61a7e9`, using the updated Gyral skill. These results describe a
+validated prototype. The implementation results appear in the next appendix below.
+
+**Our recommendation:** adopt next.9 with `subscriptions` for the table watches,
+reduced-motion listeners and turn clock, and address playback recovery after removal.
+The required API migration is small. The subscription API answers our main lifecycle ask,
+but existing watches started in `init` need to move to it to gain reconnect support.
+
+### Release and migration validation
+
+We used `gyral-0.3.1-next.9.tar.gz`, packed from clean Gyral commit
+`78052c439d697e5d2075bd6a40c6ea8cc257cd6c`. Every entry in its `SHA256SUMS` passed.
+The five packages we use installed through npm with the existing core override and resolved
+to one `@gyral/core@0.3.1-next.9`.
+
+Beyond the five tarballs and package/lockfile updates, the required migration was three lines:
+
+- Change the imports in `src/components/playback-commands.ts` and
+  `src/components/sabacc-room.ts` from `@gyral/time/delay` to `@gyral/time`.
+- Remove `@gyral/time/delay` from the Vitest preset's `optimize` list.
+
+| Version / prototype | Validation |
+|---|---|
+| Current next.6 app | `npm run check` passed; all 156 tests |
+| Next.9 with required edits only | `npm run check` passed; all 156 tests |
+| Next.9 with the cleanups and subscriptions below | `npm run check` passed; 161 tests, including five new lifecycle tests |
+| Production build of that prototype | `npm run drive`: 29 runs, zero console/page errors; classic, 3D, shifts, playback, persistence, rules and real-server multiplayer |
+
+We reviewed representative desktop and phone screenshots. The additional five passing tests
+cover classic and room snapshot recovery, reduced-motion listener recovery, clock lifecycle,
+and 3D snapshot/stage recovery. A **separate playback recovery probe still fails** and was kept
+outside the prototype's normal test discovery. The passing suite and drive therefore do not
+mean all detach/reconnect behavior is fixed.
+
+### Feedback now answered, and cleanups we validated
+
+- **Payload-free intents:** all 17 echo parsers become `Key: true`. Payload parsers still
+  validate their inputs. This directly answers item 2 above.
+- **Pure views:** `sabacc-card`, `sabacc-log`, `sabacc-plate` and `sabacc-pot` omit their
+  eight empty `intent`/`update` tables. This answers the empty-table part of item 1; the
+  prototype kept their existing `Stateless`, `never` and props type arguments.
+- **Commands with no success message:** `play`, `join` and `go` use
+  `command(driver, input)`, removing three dummy `onSuccess` handlers and the explicit
+  command type arguments at those sites. Per-input result typing for a multi-input driver
+  remains a separate request.
+- **Subscriptions and the clock:** `subscriptions(state, props)` plus `every` replaces
+  our custom interval driver and the deadline comparison in `TableChanged`. The clock starts
+  only while a deadline exists, stays running across unrelated updates and moves, restarts
+  after a genuine detach, and stops when the deadline disappears. This answers item 6.
+- **Generated element typings:** all nine Gyral tag declarations can be generated. We
+  removed their eight handwritten declaration blocks, included `.gyral/elements.d.ts` in
+  `tsconfig.json`, ignored `.gyral/`, and ran `gyral-types` before `tsc`. The plain
+  `sabacc-stage` declaration stays handwritten. We also removed the obsolete
+  `useDefineForClassFields: false` setting; the full checks passed.
+- **Imperative widgets:** the updated skill explains the own-element pattern and
+  `defineHook({ client, dispose })`. This addresses the guidance requested in item 8;
+  our WebGL stage remains its own custom element.
+
+Typed driver tokens are also useful: they can replace our failing `unbound` and `unwatched`
+defaults. We did not adopt them in the prototype. Our current error explicitly tells a
+Sabacc developer to call `provideTable`; the token's G0043 diagnostic names the missing
+driver and explains `provideDrivers`. Both are actionable, with different levels of app
+context.
+
+### Continuous watches: moving them to subscriptions fixes an app defect
+
+The supplied `SABACC.md` describes moving `watchTable` out of `init` as offering little
+benefit because it runs for the component's whole life. Our reconnect tests found a benefit
+that makes this part of our recommended upgrade scope.
+
+Reproduction with seed 42, an existing `<sabacc-table>` or `<sabacc-room>`, and a store
+provided on its host:
+
+1. Mount and `await settled()`; the component reads a `Lobby` snapshot.
+2. Remove the component and `await settled()` so disconnected teardown finishes.
+3. Dispatch `StartHand` on the store while the component is detached.
+4. Reattach the **same element** to its host and `await settled()`.
+5. Check that it reads `Playing` and follows subsequent store changes.
+
+On both next.6 and the minimal next.9 upgrade, step 5 fails: the component still reads
+`Lobby`. Its initial watch was aborted, and `init` does not run again. A separate
+`matchMedia` probe shows the same problem: removal releases the reduced-motion listener,
+but reattachment neither restores it nor refreshes the preference.
+
+Moving `watchTable` and `reducedMotion` into `subscriptions` fixes all three probes.
+We made that change in the classic and 3D views and in the room panel, then added a passing
+3D test that verifies both its refreshed game snapshot and its stage's card count.
+This is a pre-existing application lifecycle gap that the new API lets us fix. We are
+not reporting it as a next.9 runtime regression. Tracked locally as `sabacc-jx3`.
+
+**Suggestion for the upgrade notes and skill:** recommend moving continuous watches from
+`init` to `subscriptions`, even when their condition is always true. Show a test that waits
+while detached and changes the source before reattaching. Our existing 3D teardown test
+removed and reattached in one task and only checked that the renderer resumed drawing;
+it did not exercise a stopped watch or verify recovery of the game snapshot. The distinction
+between a move and a genuine detach is easy to miss when writing tests.
+
+### One-shot playback delays still need an app recovery policy
+
+Subscriptions restore the watches, but a cancelled playback delay needs additional handling.
+With seed 42:
+
+1. Mount the classic table with motion enabled, then dispatch `StartHand`.
+2. Wait for rendering and verify that playback has shown only the first of several beats.
+3. Remove the element and `await settled()` to abort its pending delay.
+4. Reattach it, wait for rendering, then wait 1,600 ms for another beat.
+
+The probe fails on next.6 and on the next.9 subscription prototype: `playback.shown`
+stays at 1. In the prototype, the restarted watch emits the same `table.last` reference;
+`tableChanged` returns state without issuing another `nextBeat` command. The one-shot delay
+has already been cancelled. This specific probe exercised the classic view; the 3D view
+uses the same playback pattern and needs corresponding coverage.
+
+We need to choose whether a genuine reattachment resumes playback or finishes it immediately,
+then implement that policy while retaining the existing stale-timer guards. Tracked locally
+as `sabacc-1c9`. Again, this is application recovery work, not evidence that Gyral should
+automatically replay all commands from `init`.
+
+**Suggestion:** add a lifecycle recipe for cancelled one-shot work whose progress remains
+in component state. Explain what `subscriptions` restores, what an aborted delay leaves
+behind, and how an app can resume or finish that work without restarting timers on unrelated
+state updates.
+
+### Corrections to our earlier feedback and remaining requests
+
+Our item 9 request for typed command inspection was mistaken: `commandsFor` and `inputsFor`
+already exist in installed next.6. We can remove the cast in `controls-model.test.ts` using
+those helpers. `IntentNames` also already exists; that complaint is about discoverability
+and the circular type inference pattern, not an absent export. The updated skill documents
+the `TemplateResult` return annotation for `intentsOf` rows. A type-only
+`IntentsOf<typeof Component>` helper remains absent from the next.9 exports.
+
+The following requests remain relevant to the artifacts we inspected:
+
+- **Plain custom events:** `stage-event` still uses a string event name and an `unknown`
+  detail checked by our guard. A typed adapter remains useful.
+- **Multi-input driver results:** the page driver's `Where | undefined` output still
+  needs narrowing for `Where`. Handler-less commands reduce ceremony, but do not give
+  each input variant its own result type.
+- **Distribution:** the supplied satellite packages still depend on an exact core version,
+  so our vendored installation still needs its override. We still favor a prerelease
+  dist-tag and peer core dependencies. This assessment did not check current npm publication
+  status.
+- **Packaged release history:** the next.9 core tarball's `CHANGELOG.md` still begins at
+  0.3.0. The external release README and consumer notes remain more informative.
+
+The narrower error-view detection is a useful correction for our room state's `error` field;
+it addresses the false-positive size cost described in the consumer notes. We did not
+separately attribute bytes to that change. The existing Effect store, coalesced snapshot
+bridge, keyed card lists, static entry imports and WebGL custom element remain appropriate
+for this app. The next.9 automatic-component and SSR changes do not require changes here:
+Sabacc is still client-only and explicitly imports its components.
+
+## Appendix: next.9 implementation (2026-10-10)
+
+We have now applied the complete next.9 upgrade to the working Sabacc checkout under
+epic `sabacc-9z2`. This section supersedes the prototype status in the preceding appendix.
+The Effect engine/store, coalesced snapshot bridge, keyed card lists, static entry imports
+and plain WebGL custom element remain the architecture for the app.
+
+### Changes applied
+
+- Vendored the five next.9 packages from clean release commit `78052c4`, verified their
+  upstream SHA-256 entries, replaced next.6 artifacts, and regenerated the npm lockfile.
+  A clean `npm ci` succeeds and `npm ls` resolves a single next.9 core. The npm override
+  remains necessary for the supplied packages' exact core dependency.
+- Imported timers from the `@gyral/time` root and removed the obsolete Vitest optimize
+  subpath. Used all 17 `true` echo intents, omitted eight empty tables in four pure views,
+  and removed dummy success handlers and message generics from `play`, `join` and `go`.
+- Adopted typed `tableMoves` and `tableSnapshots` driver tokens. Our two throwing/failing
+  placeholder implementations are gone. Missing providers report G0043 with the missing
+  driver and component; optimized builds include the diagnostic documentation URL.
+  Our frontend guide points developers to the app's `provideTable` binding.
+- Generated all nine Gyral element declarations and removed their eight handwritten
+  blocks. `typecheck` runs `gyral-types` before `tsc`, includes the generated file explicitly,
+  and works with `.gyral/` absent. The plain `sabacc-stage` declaration remains.
+  The obsolete class-field compiler option is gone.
+- Used `IntentNames` in the six helper-template signatures and `inputsFor` with our typed
+  table token in controls model tests, eliminating the command-input cast. These two
+  helpers already existed in next.6; their adoption is cleanup, not a new next.9 feature.
+- Moved table watches in both views and the room panel, plus both reduced-motion watches,
+  into `subscriptions`. The motion driver now uses `subscription()`'s returned cleanup
+  instead of a manually pending Promise and abort listener.
+- Replaced the handwritten interval driver and deadline transition comparison with a
+  conditional `every(1000, …)` subscription. Deadline removal clears the displayed clock
+  and stale tick replies are ignored.
+
+### Playback recovery is implemented in both views
+
+Our recovery policy is **resume the current beat with its full delay after genuine
+reattachment**. The pending beat's delay is now derived in `subscriptions`; its lane key
+is `playback:<run>:<shown>`. `Advance` carries and checks both values. Skip and reduced
+motion remove the pending timer; unrelated snapshots and same-task moves preserve elapsed
+time. New transitions replace old playback, and reattachment refreshes the store snapshot.
+
+Including the step in the key matters: consecutive beats can have equal delay inputs.
+With a fixed key, the subscription diff regards those inputs as unchanged and does not
+restart a completed delay. Guarding the step also rejects a duplicate reply from the same
+run. A timer keyed by the run alone is insufficient for this sequence.
+
+This is a useful exception to the general recipe that puts one-shot delays in reducers:
+the timer exists while a particular pending beat exists in component state and must
+recover with that state. Ordinary one-shot effects still belong in reducers or `init`.
+We would welcome this recovery pattern, plus the genuine-detach test, in the Gyral skill
+and release notes. No replay of all `init` commands is needed.
+
+### Validation and remaining upstream feedback
+
+`npm run check` passes: type generation/typecheck, architecture and template lints,
+**167 tests in 19 files**, and the production build. This includes ten new Chromium
+lifecycle tests and one duplicate-step model regression. The eight initial lifecycle
+regressions failed on next.6 before implementation; the duplicate-step model test also
+fails against the original playback function. Coverage includes subscription cleanup,
+reattachment after source changes, listener counts, clock restart/stop, equal-duration
+beats, retained elapsed time on moves, stale replies, skip and reduced motion.
+
+The production drive passes **37 cases with zero console/page errors**, including
+eight new real-motion `reattach` / `3d-reattach` cases across both themes and desktop/phone
+viewports. Existing full-hand, fold, playback, persistence, 3D selection, shift, rules
+and real-server multiplayer paths also pass. We reviewed representative screenshots
+for both views, reattachment, card selection, shifts and multiplayer results.
+
+Current JS + CSS across each page's chunks, gzip level 9 without filename/timestamp
+headers: classic **87,157 bytes**, 3D **242,336 bytes**. Lifecycle recovery is included;
+this is a bundle measurement, not a browser performance benchmark.
+
+The remaining framework requests are narrower: a typed adapter for plain custom events,
+per-input result typing for multi-input drivers, a type-only component-intent helper,
+prerelease registry distribution/peer core dependencies, and release history inside the
+packed core changelog. These are upstream feedback, not unfinished next.9 application
+migration work. The eventual final 0.3.1 registry switch remains a separate local task,
+`sabacc-92i`.

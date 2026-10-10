@@ -29,6 +29,31 @@ const skipIfPlaying = async (page: Page) => {
   if (await visible(page, "Skip ahead")) await page.getByRole("button", { name: "Skip ahead" }).first().click({ timeout: 1500 }).catch(() => undefined)
 }
 
+/** A genuine detach during playback must resume the same beat and restore usable controls. */
+const reattachPlayback = async (page: Page, shot: Shot, tag: "sabacc-table" | "sabacc-3d") => {
+  await click(page, /Deal a hand/)
+  const before = await page.evaluate(async (tag) => {
+    const el = document.querySelector(tag)
+    const parent = el?.parentElement
+    if (el === null || parent === undefined || parent === null) throw new Error(`Missing ${tag}`)
+    const { run, shown, beats } = el.state.playback
+    if (shown >= beats.length) throw new Error(`${tag} has no pending playback`)
+    el.remove()
+    // Teardown is deferred by a microtask; this turn makes it a removal, not a move.
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    parent.append(el)
+    return { tag, run, shown }
+  }, tag)
+  await page.waitForFunction(({ tag, run, shown }) => {
+    const p = document.querySelector(tag)?.state.playback
+    return p !== undefined && p.run === run && p.shown > shown
+  }, before, { timeout: 10_000 })
+  await shot(`${tag}-reattach-1-resumed`)
+  await skipIfPlaying(page)
+  await page.getByRole("button", { name: /^Check$|^Match/ }).first().waitFor()
+  await shot(`${tag}-reattach-2-your-turn`)
+}
+
 const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
   // Deal; check or match each betting round; lock a card and gain; keep playing once, then call.
   full: async (page, shot) => {
@@ -65,6 +90,8 @@ const paths: Record<string, (page: Page, shot: Shot) => Promise<void>> = {
     await skipIfPlaying(page)
     await shot("playback-2-your-turn")
   },
+  reattach: (page, shot) => reattachPlayback(page, shot, "sabacc-table"),
+  "3d-reattach": (page, shot) => reattachPlayback(page, shot, "sabacc-3d"),
   // Saved table: deal, reload without a seed, and the hand is still there.
   restore: async (page, shot) => {
     await page.goto(page.url().replace(/\?seed=\d+/, ""))
@@ -150,8 +177,8 @@ for (const [name, run] of Object.entries(paths)) {
   if (name === "multiplayer") continue
   for (const scheme of ["dark", "light"] as const) {
     for (const viewport of [{ width: 1280, height: 900 }, { width: 390, height: 844 }]) {
-      // Scripted paths use reduced motion (instant playback); `playback` and `3d` keep real motion.
-      const motion = name === "playback" || name.startsWith("3d")
+      // Playback, reattachment and 3D paths keep real motion; other scripted paths skip it.
+      const motion = name === "playback" || name === "reattach" || name.startsWith("3d")
       const page = await browser.newPage({ colorScheme: scheme, viewport, reducedMotion: motion ? "no-preference" : "reduce" })
       const errors: Array<string> = []
       page.on("console", (m) => m.type() === "error" && errors.push(m.text()))

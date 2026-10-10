@@ -76,6 +76,11 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files â
    `Advance` back (`src/components/playback-commands.ts`). `<sabacc-3d>` uses longer
    delays (`src/scene/timing.ts`) so cards can fly and dice can tumble. Under
    `prefers-reduced-motion` it is instant. The store's game is already final throughout.
+   Table and media-query watches live in Gyral `subscriptions`, as does the pending
+   beat's delay. Each beat's timer key includes its playback run and step; `Advance`
+   guards both. A genuine detach stops the work, and reattachment refreshes the
+   snapshot and resumes the current beat with its full delay. Moves in one task and
+   unrelated snapshots preserve the running delay; skip and reduced motion cancel it.
 6. A failed command (e.g. `InsufficientCredits`) comes back as a tagged error and
    becomes a user-facing notice. It never changes the game.
 

@@ -15,9 +15,7 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "noEmit": true,
-    "allowImportingTsExtensions": true,
-    // Gyral's tsconfig requirement (skills/gyral SKILL.md "Manual install"). No decorators.
-    "useDefineForClassFields": false
+    "allowImportingTsExtensions": true
   },
-  "include": ["src", "test", "scripts", "vite.config.ts", "vitest.config.ts"]
+  "include": [".gyral/elements.d.ts", "src", "test", "scripts", "vite.config.ts", "vitest.config.ts"]
 }

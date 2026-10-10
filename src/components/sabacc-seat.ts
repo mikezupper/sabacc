@@ -141,9 +141,3 @@ export const SabaccSeat = define<Stateless, Msg, Props, SeatOutput>()("sabacc-se
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-seat": InstanceType<typeof SabaccSeat>
-  }
-}

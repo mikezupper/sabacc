@@ -5,5 +5,10 @@ human-readable summary, refreshed when debt is filed or paid.
 
 | Item | Why it matters | Bead |
 |---|---|---|
-| Gyral is installed from `vendor/gyral/0.3.1-next.6` (a prerelease) until 0.3.1 is on npm | The lockfile points at tarballs in the repo; switch to the registry and delete `vendor/` | `sabacc-92i` |
-| Gyral feedback from 0.3.1-next.6 not yet sent upstream | The owner relays [gyral-feedback.md](../references/gyral-feedback.md) to the Gyral team | `sabacc-alv` |
+| Gyral is installed from `vendor/gyral/0.3.1-next.9` (a prerelease) until the final 0.3.1 registry migration | The lockfile points at verified tarballs in the repo; switch to the registry and delete `vendor/` | `sabacc-92i` |
+| 3D player plates can overlap the room/log overlay on phones | At 390px, labels can cover part of the log panel during the draw; seen in the assessment and production screenshots | `sabacc-c9s` |
+
+The next.9 assessment and implementation feedback is ready in
+[gyral-feedback.md](../references/gyral-feedback.md) for the owner to relay. The local
+upgrade and lifecycle work belongs to epic `sabacc-9z2`; upstream API and distribution
+requests are feedback, not unfinished next.9 application work.

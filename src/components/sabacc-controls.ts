@@ -109,28 +109,28 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
   props,
   init: () => ({ amount: MIN_BET }),
   intent: {
-    Deal: () => ({ _tag: "Deal" }),
-    NewTable: () => ({ _tag: "NewTable" }),
-    Check: () => ({ _tag: "Check" }),
-    Match: () => ({ _tag: "Match" }),
-    AllIn: () => ({ _tag: "AllIn" }),
-    Fold: () => ({ _tag: "Fold" }),
+    Deal: true,
+    NewTable: true,
+    Check: true,
+    Match: true,
+    AllIn: true,
+    Fold: true,
     Amount: ({ value }) => {
       const amount = Number(value)
       return value !== undefined && value !== "" && Number.isFinite(amount) ? { _tag: "Amount", amount } : undefined
     },
-    Bet: () => ({ _tag: "Bet" }),
-    Gain: () => ({ _tag: "Gain" }),
-    Stand: () => ({ _tag: "Stand" }),
+    Bet: true,
+    Gain: true,
+    Stand: true,
     Choose: ({ value }) => {
       const cardId = Number(value)
       return Number.isInteger(cardId) ? { _tag: "Choose", cardId } : undefined
     },
-    Lock: () => ({ _tag: "Lock" }),
-    Trade: () => ({ _tag: "Trade" }),
-    CallHand: () => ({ _tag: "CallHand" }),
-    Pass: () => ({ _tag: "Pass" }),
-    Skip: () => ({ _tag: "Skip" }),
+    Lock: true,
+    Trade: true,
+    CallHand: true,
+    Pass: true,
+    Skip: true,
   },
   update: {
     Deal: (s) => [s, [play(Command.StartHand())]],
@@ -238,9 +238,3 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-controls": InstanceType<typeof SabaccControls>
-  }
-}

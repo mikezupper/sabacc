@@ -29,8 +29,6 @@ const plateProps = { plate: prop.value(isPlate) }
 
 export const SabaccPlate = define<Stateless, never, PropsOf<typeof plateProps>>()("sabacc-plate", {
   props: plateProps,
-  intent: {},
-  update: {},
   view: (_s, _i, { props: { plate: d } }) => {
     if (d === undefined) return nothing
     const { seat, mine } = d
@@ -101,8 +99,6 @@ const potProps = {
 
 export const SabaccPot = define<Stateless, never, PropsOf<typeof potProps>>()("sabacc-pot", {
   props: potProps,
-  intent: {},
-  update: {},
   view: (_s, _i, { props: p }) => html`<span class="pot"><span>${p.label}</span> <strong>${formatCredits(p.amount)}</strong></span>`,
   styles: css`
     :host { display: block; pointer-events: none; }
@@ -122,10 +118,3 @@ export const SabaccPot = define<Stateless, never, PropsOf<typeof potProps>>()("s
     }
   `,
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-plate": InstanceType<typeof SabaccPlate>
-    "sabacc-pot": InstanceType<typeof SabaccPot>
-  }
-}

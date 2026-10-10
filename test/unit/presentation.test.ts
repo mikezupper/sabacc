@@ -17,9 +17,9 @@ describe("playback model (shared by the classic and 3D views)", () => {
     expect(revealed(p)).toHaveLength(1)
     expect(frame(p, newTable())).toBe(bs[0]?.game)
     expect(nextDelay(p, () => 100)).toBe(100)
-    p = advancePlayback(p, p.run)
+    p = advancePlayback(p, p.run, p.shown)
     expect(revealed(p)).toHaveLength(2)
-    p = advancePlayback(p, p.run)
+    p = advancePlayback(p, p.run, p.shown)
     expect(isPlaying(p)).toBe(false)
     expect(nextDelay(p)).toBeUndefined()
     const live = newTable()
@@ -36,7 +36,13 @@ describe("playback model (shared by the classic and 3D views)", () => {
   it("ignores a timer from an older playback", () => {
     const first = startPlayback(noPlayback, beats(3), false)
     const second = startPlayback(first, beats(3), false)
-    expect(advancePlayback(second, first.run)).toBe(second)
+    expect(advancePlayback(second, first.run, first.shown)).toBe(second)
+  })
+
+  it("ignores a duplicate timer from an earlier step of the same playback", () => {
+    const first = startPlayback(noPlayback, beats(3), false)
+    const second = advancePlayback(first, first.run, first.shown)
+    expect(advancePlayback(second, first.run, first.shown)).toBe(second)
   })
 
   it("holds every beat at least as long in 3D as in 2D", () => {

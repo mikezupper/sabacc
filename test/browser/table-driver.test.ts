@@ -1,5 +1,5 @@
 // The table driver inside a real Gyral component: provided by an ancestor, watched from
-// `init`, moves sent from an intent, the store's change rendered back.
+// subscriptions, moves sent from an intent, the store's change rendered back.
 import { define, html, settled } from "@gyral/core"
 import { collectErrors } from "@gyral/testing"
 import { afterEach, describe, expect, it, vi } from "vitest"
@@ -14,8 +14,9 @@ interface State {
 type Msg = { readonly _tag: "TableChanged"; readonly table: TableSnapshot } | { readonly _tag: "Deal" }
 
 const Probe = define<State, Msg>()("test-table-probe", {
-  init: () => [{ phase: "", beats: 0 }, [watchTable((table): Msg => ({ _tag: "TableChanged", table }))]],
-  intent: { Deal: () => ({ _tag: "Deal" }) },
+  init: () => ({ phase: "", beats: 0 }),
+  subscriptions: () => [watchTable((table): Msg => ({ _tag: "TableChanged", table }))],
+  intent: { Deal: true },
   update: {
     TableChanged: (_s, m) => ({ phase: m.table.game.phase._tag, beats: m.table.last.length }),
     Deal: (s) => [s, [play(Command.StartHand())]],
@@ -63,7 +64,10 @@ describe("table driver in a Gyral component", () => {
       const [failure] = collected.errors
       expect(failure?.component).toBe("test-table-probe")
       expect(failure?.phase).toBe("command")
-      expect(String(failure?.cause)).toContain("provideTable")
+      // Development expands the diagnostic; optimized/production core includes its code.
+      expect(failure?.message).toMatch(/G0043|no driver provides/)
+      expect(failure?.message).toContain("table-watch")
+      expect(failure?.message).toMatch(/provideDrivers|https:\/\/gyral.dev\/errors\/#G0043/)
     } finally {
       collected.stop()
     }

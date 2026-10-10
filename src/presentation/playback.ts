@@ -1,6 +1,6 @@
 // Beat playback shared by every view (classic table, 3D table), as a pure model: which
 // beats are on screen and how long the current one stays. No timers here: a view turns
-// `nextDelay` into a timer command and feeds `Advance` back. The game itself is already
+// `nextDelay` into a timer subscription and feeds `Advance` back. The game itself is already
 // final in the store; playback only decides which snapshot to show.
 import type { Beat, Game, GameEvent } from "../domain/model.ts"
 
@@ -44,8 +44,9 @@ export const startPlayback = (p: Playback, beats: ReadonlyArray<Beat>, instant: 
 
 export const isPlaying = (p: Playback): boolean => p.shown < p.beats.length
 
-/** Show the next beat, if `run` is still the current playback. */
-export const advancePlayback = (p: Playback, run: number): Playback => (run === p.run && isPlaying(p) ? { ...p, shown: p.shown + 1 } : p)
+/** Show the next beat only if the timer still belongs to this run and step. */
+export const advancePlayback = (p: Playback, run: number, shown: number): Playback =>
+  run === p.run && shown === p.shown && isPlaying(p) ? { ...p, shown: p.shown + 1 } : p
 
 export const skipPlayback = (p: Playback): Playback => ({ ...p, shown: p.beats.length })
 

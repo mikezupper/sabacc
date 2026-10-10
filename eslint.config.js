@@ -5,6 +5,7 @@ import tsParser from "@typescript-eslint/parser"
 import gyral from "@gyral/core/eslint"
 
 export default [
+  { ignores: [".drive/**", ".gyral/**", "dist/**"] },
   {
     files: ["src/components/**/*.ts", "src/scene/**/*.ts"],
     languageOptions: { parser: tsParser },

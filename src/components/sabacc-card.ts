@@ -73,8 +73,6 @@ const face = (c: Card, locked: boolean) => {
 
 export const SabaccCard = define<Stateless, never, Props>()("sabacc-card", {
   props,
-  intent: {},
-  update: {},
   view: (_s, _i, { props: p }) => (p.card === undefined ? back(p.locked) : face(p.card, p.locked)),
   styles: [
     base,
@@ -96,9 +94,3 @@ export const SabaccCard = define<Stateless, never, Props>()("sabacc-card", {
     `,
   ],
 })
-
-declare global {
-  interface HTMLElementTagNameMap {
-    "sabacc-card": InstanceType<typeof SabaccCard>
-  }
-}

@@ -35,8 +35,9 @@ export interface TableSnapshot {
 
 export type TableInput = { readonly _tag: "Play"; readonly command: GameCommand } | { readonly _tag: "Join"; readonly name: string }
 
-const DRIVER = "table"
-const WATCH = "table-watch"
+/** Typed tokens: implementations come from the page's provideTable() scope. */
+export const tableMoves = defineDriver<TableInput, undefined>("table")
+export const tableSnapshots = defineDriver<undefined, TableSnapshot>("table-watch")
 
 const snapshotOf = (store: Store): TableSnapshot => {
   const r = store.room
@@ -73,7 +74,7 @@ const cellsOf = (store: Store) => {
 /** The moves driver bound to one store: play a command, or sit down at a multiplayer table. */
 export const tableDriver = (store: Store): Driver<TableInput, undefined> =>
   defineDriver<TableInput, undefined>({
-    name: DRIVER,
+    name: tableMoves.name,
     run: (input) => {
       if (input._tag === "Play") store.dispatch(input.command)
       else store.room?.join(input.name)
@@ -88,7 +89,7 @@ export const tableDriver = (store: Store): Driver<TableInput, undefined> =>
  * after that. (The Gyral docs' "outside stores" recipe is based on this.)
  */
 export const tableWatch = (store: Store): Driver<undefined, TableSnapshot> =>
-  subscription<TableSnapshot>(WATCH, (emit) => {
+  subscription<TableSnapshot>(tableSnapshots.name, (emit) => {
     let queued = false
     const changed = () => {
       if (queued) return
@@ -103,33 +104,16 @@ export const tableWatch = (store: Store): Driver<undefined, TableSnapshot> =>
     return () => unsubscribe.forEach((off) => off())
   })
 
-const NO_TABLE = "No table: call provideTable(element, store) on an ancestor of this component."
-
-/** The defaults, before a page provides its store: a clear error instead of silence. */
-const unbound = defineDriver<TableInput, undefined, string>({
-  name: DRIVER,
-  run: () => {
-    throw new Error(NO_TABLE)
-  },
-  toError: (e) => (e instanceof Error ? e.message : String(e)),
-})
-const unwatched = subscription<TableSnapshot>(WATCH, (_emit, { fail }) => {
-  fail(new Error(NO_TABLE))
-  return () => {}
-})
-
 /** Make `store` the table for every Gyral component under `element`. Returns an undo. */
 export const provideTable = (element: Element, store: Store): (() => void) =>
-  provideDrivers(element, { [DRIVER]: tableDriver(store), [WATCH]: tableWatch(store) })
+  provideDrivers(element, { [tableMoves.name]: tableDriver(store), [tableSnapshots.name]: tableWatch(store) })
 
 /** Send a move to the table. The result comes back through `watchTable`, never here. */
-export const play = <M>(move: GameCommand): Command<M> =>
-  command<TableInput, undefined, string, M>(unbound, { _tag: "Play", command: move }, { onSuccess: () => undefined })
+export const play = (move: GameCommand): Command<never> => command(tableMoves, { _tag: "Play", command: move })
 
 /** Sit down at a multiplayer table with this display name (asked once, then remembered). */
-export const join = <M>(name: string): Command<M> =>
-  command<TableInput, undefined, string, M>(unbound, { _tag: "Join", name }, { onSuccess: () => undefined })
+export const join = (name: string): Command<never> => command(tableMoves, { _tag: "Join", name })
 
 /** Stream the table: one message now, then one per change, while the component is connected. */
 export const watchTable = <M>(toMsg: (s: TableSnapshot) => M): Command<M> =>
-  command(unwatched, undefined, { onSuccess: toMsg, key: "table" })
+  command(tableSnapshots, undefined, { onSuccess: toMsg, key: "table" })
