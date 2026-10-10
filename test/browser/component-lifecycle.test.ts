@@ -1,6 +1,6 @@
 // Real detach (a turn outside the document) differs from a move in the same task.
 import { settled } from "@gyral/core"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { Command, GameEvent } from "../../src/domain/model.ts"
 import { cell } from "../../src/state/cell.ts"
 import { createStore, type Presence, type Store } from "../../src/state/store.ts"
@@ -19,6 +19,15 @@ const hostsFor = (store: Store) => {
   document.body.append(host, other)
   return { host, other }
 }
+
+// These cases advance command replies and the room clock. Keep Three.js on the
+// browser's real frame clock instead of rendering hundreds of fake GPU frames.
+const fakeCommandTime = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] })
+
+// These assertions concern Gyral subscriptions and playback, including the WebGL
+// fallback. Scene creation/disposal and projection use real WebGL in table3d.test
+// and table3d-layout.test, without coupling these timer tests to shader compilation.
+beforeEach(() => vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(null))
 
 afterEach(async () => {
   document.body.replaceChildren()
@@ -99,7 +108,7 @@ describe("component subscriptions (sabacc-jx3)", () => {
   }
 
   it("the room clock survives reattach, stays stable across updates and moves, and stops without a deadline", async () => {
-    vi.useFakeTimers()
+    fakeCommandTime()
     const presence = cell<Presence>({ connected: [true], deadline: undefined })
     const store: Store = {
       ...createStore(42),
@@ -153,7 +162,7 @@ describe("component subscriptions (sabacc-jx3)", () => {
 describe("playback recovery (sabacc-1c9)", () => {
   for (const [label, Component] of [["classic table", SabaccTable], ["3D table", Sabacc3d]] as const) {
     it(`${label} resumes an interrupted beat and completes equal-duration beats`, async () => {
-      vi.useFakeTimers()
+      fakeCommandTime()
       const store = createStore(42)
       const { host, other } = hostsFor(store)
       const el = new Component()
@@ -187,7 +196,7 @@ describe("playback recovery (sabacc-1c9)", () => {
     })
 
     it(`${label} ignores stale timer replies and cancels playback for skip and reduced motion`, async () => {
-      vi.useFakeTimers()
+      fakeCommandTime()
       const store = createStore(42)
       const { host } = hostsFor(store)
       const el = new Component()

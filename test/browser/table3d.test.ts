@@ -73,6 +73,29 @@ describe("<sabacc-3d>", () => {
     expect(shadow(el).querySelector(".fallback")).toBeNull()
   })
 
+  it("redraws a resized canvas without waiting for the next animation-loop frame", async () => {
+    const { el } = await mount()
+    const current = stage(el)!
+    current.renderer.setAnimationLoop(null)
+    const before = current.frames
+    const host = shadow(el).querySelector("sabacc-stage")!
+    const height = host.clientHeight
+    const resized = new Promise<void>((resolve) => {
+      const observer = new ResizeObserver(() => {
+        if (host.clientHeight === height) return
+        observer.disconnect()
+        resolve()
+      })
+      observer.observe(host)
+    })
+    el.style.blockSize = "720px"
+    await resized
+    expect(current.frames).toBeGreaterThan(before)
+    expect(current.renderer.info.render.calls).toBeGreaterThan(0)
+    // Leave the observer delivery before afterEach removes its observed host.
+    await frame()
+  }, 60_000)
+
   it("tears the stage down when the view leaves the page, and builds a new one when it returns", async () => {
     const { el } = await mount()
     const first = stage(el)!
@@ -97,7 +120,7 @@ describe("<sabacc-3d>", () => {
     expect(store.game.get().phase._tag).toBe("Playing")
     expect(stage(el)!.cardCount).toBe(cardsIn(store.game.get()))
     expect(shadow(el).querySelector("output")?.textContent).toMatch(/Betting/)
-    expect(shadow(el).querySelectorAll("sabacc-plate")).toHaveLength(store.game.get().seats.length)
+    expect(shadow(el).querySelectorAll(".stage sabacc-plate")).toHaveLength(store.game.get().seats.length)
   })
 
   it("picks one of your cards on your draw and locks it in the field", async () => {
@@ -125,7 +148,7 @@ describe("<sabacc-3d>", () => {
     await settle(el)
     expect(store.game.get().phase._tag).toBe("Lobby")
     expect(stage(el)!.cardCount).toBe(cardsIn(store.game.get()))
-    expect([...shadow(el).querySelectorAll("sabacc-plate")].some((p) => shadow(p).querySelector(".plate.winner") !== null)).toBe(true)
+    expect([...shadow(el).querySelectorAll(".stage sabacc-plate")].some((p) => shadow(p).querySelector(".plate.winner") !== null)).toBe(true)
   })
 })
 

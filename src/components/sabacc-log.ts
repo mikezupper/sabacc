@@ -45,7 +45,7 @@ export const SabaccLog = define<Stateless, never, Props>()("sabacc-log", {
         cursor: pointer;
       }
       ol {
-        max-block-size: 16rem;
+        max-block-size: var(--sabacc-log-max-block-size, 16rem);
         overflow-y: auto;
         overscroll-behavior: contain;
         padding: 0 var(--space-s) var(--space-s);

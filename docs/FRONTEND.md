@@ -89,6 +89,24 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
 - The stage sits between the status bar and the controls, never under them, so your
   cards stay visible. Name plates and pot labels are Gyral components (`plates.ts`) placed
   with CSS2DRenderer.
+- On desktop the room/log aside, including the replay seed badge, gets a reserved
+  column beside the stage. On phones it gets its own row above the stage. The native
+  log disclosure has a bounded scrolling list; expanded room controls also scroll
+  within the aside. The stage keeps at least 16rem of height, and the view scrolls on
+  short screens so the seat controls stay reachable. The `3d-layout` drive path checks
+  projected plate bounds against the HUD at every viewport, open/closed disclosures,
+  resize and camera reset. Add
+  `--scheme dark --viewport phone` to capture one focused case.
+- A stage resize paints immediately after changing the canvas dimensions, keeping
+  the table visible when a prompt or disclosure changes its available height.
+- The shift alert has an explicit layer above the isolated stage, so it remains
+  visible after its decorative flash animation ends.
+- Below an 18rem table container, projected plates become numbered seat markers.
+  A player list after the seat controls shows the matching seat numbers, full names,
+  credits, turn/presence tags and results in normal flow. Names wrap without shrinking
+  the text. Both presentations use `platesFor` over the current playback snapshot.
+  `npm run drive -- --path 3d-zoom` checks both themes at a 195×422 CSS viewport with
+  pixel density 2, equivalent to a 390×844 phone layout at 200% zoom.
 - Under `prefers-reduced-motion` every snapshot is drawn instantly and effects are
   skipped. Without WebGL, show the fallback with a link to the classic table.
 

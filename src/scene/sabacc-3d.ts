@@ -3,7 +3,7 @@
 // tumble), drawn by the Three.js stage (<sabacc-stage>), with the shared HUD pieces
 // (prompt, <sabacc-controls>, <sabacc-room>, <sabacc-log>) around it.
 import { Option } from "effect"
-import { child, define, html, nothing, type IntentNames } from "@gyral/core"
+import { child, define, each, html, nothing, type IntentNames } from "@gyral/core"
 import { OPPONENT_COUNT } from "../domain/constants.ts"
 import { YOU, type Game } from "../domain/model.ts"
 import { describeEvaluation, evaluate } from "../domain/scoring.ts"
@@ -31,6 +31,7 @@ import "../components/sabacc-room.ts"
 import { tableContext } from "../components/table-context.ts"
 import { watchTable, type TableSnapshot } from "../components/table-driver.ts"
 import { hud } from "./hud-styles.ts"
+import { platesFor, type PlateData } from "./plates.ts"
 import { type StageEvent, type StageView } from "./sabacc-stage.ts"
 import "./sabacc-stage.ts"
 import { sceneBeatDelay } from "./timing.ts"
@@ -82,6 +83,8 @@ const tableChanged = (s: State, table: TableSnapshot): State => {
 
 const isStageEvent = (u: unknown): u is StageEvent =>
   typeof u === "object" && u !== null && ["Picked", "Hovered", "Failed"].includes((u as { _tag?: string })._tag ?? "")
+
+const playerRow = (plate: PlateData) => html`<li><sabacc-plate listed .plate=${plate}></sabacc-plate></li>`
 
 const hudView = (s: State, table: TableSnapshot, game: Game, i: IntentNames<"Controls" | "ResetView">) => {
   const ctx = tableContext(table, game)
@@ -141,6 +144,10 @@ const hudView = (s: State, table: TableSnapshot, game: Game, i: IntentNames<"Con
         .pending=${pending(s.playback)}
         data-intent=${i.Controls}
       ></sabacc-controls>
+    </section>
+    <section class="players" aria-labelledby="players-title">
+      <h2 id="players-title">Players</h2>
+      <ol>${each(platesFor({ game, ...ctx }), (plate) => plate.seat.index, playerRow)}</ol>
     </section>
   `
 }

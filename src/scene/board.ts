@@ -11,7 +11,7 @@ import { CardView, type Glow } from "./card-view.ts"
 import { betSpot, cardPlacement, CARD_Y, dealerSpot, handSpot, labelSpot, SPOTS, type CardRow } from "./layout.ts"
 import { ChipStack, Deck, makeDealerButton, TurnRing } from "./props.ts"
 import { burst, rollDice, tossChips } from "./effects.ts"
-import "./plates.ts"
+import { platesFor } from "./plates.ts"
 import { approach, easeInOutSine, Tweens } from "./motion.ts"
 
 export interface BoardView {
@@ -174,12 +174,12 @@ export class Board {
       if (view.instant) v.mover.snap()
     }
 
-    this.props(view, last)
+    this.props(view)
     if (beat !== undefined && !view.instant) this.effect(beat)
     if (view.instant) this.tweens.finish()
   }
 
-  private props(view: BoardView, last: HandResult | undefined): void {
+  private props(view: BoardView): void {
     const { game } = view
     const p = Option.getOrUndefined(playing(game))
     this.deck.set(p === undefined ? 76 : deckSize(game))
@@ -190,19 +190,10 @@ export class Board {
     const toAct = p?.step.toAct[0]
     this.ring.shown = toAct !== undefined
     if (toAct !== undefined) this.ring.target.copy(at(handSpot(toAct, this.seats)))
-    game.seats.forEach((s, i) => {
+    platesFor(view).forEach((data, i) => {
       const plate = this.plates[i]
       if (plate === undefined) return
-      plate.el.plate = {
-        seat: s,
-        dealer: p !== undefined && game.dealer === s.index,
-        active: toAct === s.index,
-        revealed: view.revealed.has(s.index),
-        result: last?.seats.find((r) => r.seat === s.index),
-        mine: s.index === YOU && !view.spectator,
-        presence: view.presence(s.index),
-        winner: last?.winners.includes(s.index) ?? false,
-      }
+      plate.el.plate = data
     })
     const [hand, sabacc] = this.pots
     if (hand !== undefined) hand.amount = p === undefined ? 0 : handPot(game)

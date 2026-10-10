@@ -13,6 +13,9 @@ export default defineConfig({
         test: {
           name: "browser",
           include: ["test/browser/**/*.test.ts"],
+          // SwiftShader shares CPU with dev/CI jobs. Concurrent scene files can
+          // starve rendering and time out otherwise passing WebGL tests.
+          fileParallelism: false,
           // The 3D tests draw WebGL in software (SwiftShader); on a busy machine (CI shares
           // the dev machine) they can pass 15 s.
           testTimeout: 30_000,

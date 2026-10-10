@@ -46,6 +46,8 @@ export class Stage {
   private flashLevel = 0
   private home = new THREE.Vector3()
   private resetting = false
+  private fittedWidth = 0
+  private fittedHeight = 0
   /** The player has turned or zoomed the camera: resizes keep their view. */
   private userMoved = false
   /** Frames drawn (tests and the drive script wait on this). */
@@ -110,7 +112,11 @@ export class Stage {
     el.addEventListener("pointerup", this.onPointerUp)
     el.addEventListener("pointerleave", () => this.setHover(undefined))
 
-    this.resize = new ResizeObserver(() => this.fit())
+    this.resize = new ResizeObserver(() => {
+      if (this.disposed || !this.fit()) return
+      // setSize clears the canvas; paint before the browser presents this resize.
+      this.frame(performance.now())
+    })
     this.resize.observe(host)
     this.fit()
     this.camera.position.copy(this.home)
@@ -146,17 +152,23 @@ export class Stage {
     this.labels.domElement.remove()
   }
 
-  private fit(): void {
+  private fit(): boolean {
     const w = Math.max(this.host.clientWidth, 1)
     const h = Math.max(this.host.clientHeight, 1)
+    if (w === this.fittedWidth && h === this.fittedHeight) return false
+    this.fittedWidth = w
+    this.fittedHeight = h
     this.renderer.setSize(w, h, false)
     this.labels.setSize(w, h)
     this.camera.aspect = w / h
     this.camera.updateProjectionMatrix()
-    const d = cameraDistance(w / h, FOV)
+    // CSS2D names extend beyond their world points. Reserve horizontal room for
+    // that text, especially when a short phone's stage is limited by its width.
+    const d = cameraDistance(Math.max(w - 48, 1) / h, FOV)
     this.home.set(...viewDirection(w / h)).multiplyScalar(d).add(TARGET)
     this.controls.maxDistance = Math.max(26, d * 1.3)
     if (!this.userMoved) this.resetting = true
+    return true
   }
 
   private onShift(): void {
