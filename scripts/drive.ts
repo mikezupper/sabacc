@@ -340,8 +340,10 @@ for (const [name, run] of Object.entries(paths)) {
       if (threeD) await page.waitForTimeout(800)
       const tag = `${scheme}-${viewport.width}`
       await run(page, async (name) => {
+        const captured = await screenshot(page, join(out, `${name}-${tag}.png`), threeD)
+        // Capture waits for fonts and fresh frames; audit the rendered label positions.
         errors.push(...(await tableHudProblems(page)).map((problem) => `${name}: ${problem}`))
-        return screenshot(page, join(out, `${name}-${tag}.png`), threeD)
+        return captured
       })
       report.push({ path: name, scheme, viewport: `${viewport.width}x${viewport.height}`, errors })
       console.log(`drive: ${name} ${tag}, ${errors.length} console/page/layout errors`)
@@ -371,8 +373,9 @@ if (values.path === "all" || values.path === "multiplayer") {
     return page
   }
   const shot = async (page: Page, name: string) => {
+    const captured = await screenshot(page, join(out, `mp-${name}.png`), (await page.locator("sabacc-3d").count()) > 0)
     errors.push(...(await tableHudProblems(page)).map((problem) => `${name}: ${problem}`))
-    return screenshot(page, join(out, `mp-${name}.png`), (await page.locator("sabacc-3d").count()) > 0)
+    return captured
   }
   const han = await open("dark", { width: 1280, height: 900 })
   const lando = await open("light", { width: 390, height: 844 })

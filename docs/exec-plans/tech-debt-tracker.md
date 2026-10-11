@@ -3,9 +3,9 @@
 Beads is the live tracker (`bd list --label tech-debt`). This file is the
 human-readable summary, refreshed when debt is filed or paid.
 
-| Item | Why it matters | Bead |
-|---|---|---|
-| Gyral is installed from `vendor/gyral/0.3.1-next.9` (a prerelease) until the final 0.3.1 registry migration | The lockfile points at verified tarballs in the repo; switch to the registry and delete `vendor/` | `sabacc-92i` |
+The vendored Gyral prerelease was replaced with exact npm 0.3.1 packages on
+2026-10-11 (`sabacc-92i`). The tarballs, core override and Docker vendor copies are gone;
+the upgrade is recorded in the [completed plan](completed/2026-10-gyral-0.3.1.md).
 
 The next.9 assessment and implementation feedback is ready in
 [gyral-feedback.md](../references/gyral-feedback.md) for the owner to relay. The local

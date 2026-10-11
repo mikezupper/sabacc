@@ -518,3 +518,36 @@ prerelease registry distribution/peer core dependencies, and release history ins
 packed core changelog. These are upstream feedback, not unfinished next.9 application
 migration work. The eventual final 0.3.1 registry switch remains a separate local task,
 `sabacc-92i`.
+
+## Appendix: npm 0.3.1 migration (2026-10-11)
+
+Sabacc now installs `@gyral/core`, `@gyral/http`, `@gyral/time`, `@gyral/testing` and
+`@gyral/devtools` from npm at exact `0.3.1` versions. The five packages share one core
+without an override. We removed the vendored next.9 tarballs and both Docker vendor
+copies; a clean `npm ci` works, and unrelated locked dependencies are unchanged.
+Downloaded packages match npm's published integrity metadata.
+
+The next.9 application migration carries forward without further changes under `src/`:
+the final API supports our typed driver tokens, generated element declarations,
+subscriptions, playback recovery and SVG fragments. The full check passes **179 tests
+in 20 files**, both lints, type generation/typecheck and the production build. The
+Linux amd64 image builds from npm packages and passes its health, classic/3D assets,
+room creation, real WebSocket join/deal and non-root smoke checks.
+
+The packed core changelog now includes a substantive 0.3.1 release summary and a link
+to the migration guide, improving the release-note gap described above. Stable npm
+distribution resolves Sabacc's remaining local packaging task. The earlier requests
+about prerelease publication and peer core dependencies remain upstream suggestions.
+
+Current JS + CSS gzip totals, level 9 without filename/timestamp headers, including
+the responsive HUD fixes made after next.9: **87,434 bytes classic / 244,642 bytes 3D**.
+
+The production drive covered **43 cases with zero console/page errors**. Its two
+animated phone cases initially reported clipped labels before the screenshot's font
+and frame wait. An isolated next.9 build reproduced the same four after-draw assertions;
+this was our capture/audit ordering, not a stable-release regression (`sabacc-189`).
+Auditing after capture readiness keeps every layout assertion and makes both phone
+themes pass. Representative classic, 3D, shift and enlarged player-list captures were
+reviewed. The initial full-run and targeted regression reports are preserved in `.drive/`.
+The corrected multiplayer replay also passes. Final coverage across the full run and
+targeted phone/multiplayer reruns is **43 cases with zero console/page/layout errors**.

@@ -5,8 +5,9 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3.1 (vendored prerelease `0.3.1-next.9` until it's
-on npm): Model-View-Intent web components with their own view layer. Source skill: `gyral` (read from the Gyral checkout's `skills/gyral/`). The move
+The UI is [Gyral](https://gyral.dev) 0.3.1, installed from npm at exact versions:
+Model-View-Intent web components with their own view layer. Source skill: `gyral`
+(read from the Gyral checkout's `skills/gyral/`). The move
 from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.md).
 
 - One loop per component: `intent` parses events into tagged messages, `update` has a pure
@@ -153,6 +154,8 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   After the complete next.9 upgrade (2026-10-10), current JS + CSS totals across each
   page's chunks are **87.2 KB classic / 242.3 KB 3D**, gzip level 9 without filename or
   timestamp headers. The subscription lifecycle and playback recovery are included.
+  On npm 0.3.1 (2026-10-11), including the subsequent responsive HUD fixes, the same
+  measurement is **87,434 bytes classic / 244,642 bytes 3D**.
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
 - The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only

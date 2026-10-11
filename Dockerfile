@@ -9,8 +9,6 @@
 FROM node:24-slim AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Packages not yet on npm are installed from here (see vendor/gyral/*/README.md).
-COPY vendor ./vendor
 RUN npm ci --no-audit --no-fund
 COPY . .
 RUN npm run build
@@ -18,7 +16,6 @@ RUN npm run build
 FROM node:24-slim AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
-COPY vendor ./vendor
 RUN npm ci --omit=dev --no-audit --no-fund
 
 FROM node:24-slim

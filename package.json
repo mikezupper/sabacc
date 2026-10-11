@@ -27,15 +27,15 @@
   "dependencies": {
     "@effect/platform": "~0.97.2",
     "@effect/platform-node": "~0.108.2",
-    "@gyral/core": "file:vendor/gyral/0.3.1-next.9/gyral-core-0.3.1-next.9.tgz",
-    "@gyral/http": "file:vendor/gyral/0.3.1-next.9/gyral-http-0.3.1-next.9.tgz",
-    "@gyral/time": "file:vendor/gyral/0.3.1-next.9/gyral-time-0.3.1-next.9.tgz",
+    "@gyral/core": "0.3.1",
+    "@gyral/http": "0.3.1",
+    "@gyral/time": "0.3.1",
     "effect": "~3.22.0",
     "three": "^0.186.1"
   },
   "devDependencies": {
-    "@gyral/devtools": "file:vendor/gyral/0.3.1-next.9/gyral-devtools-0.3.1-next.9.tgz",
-    "@gyral/testing": "file:vendor/gyral/0.3.1-next.9/gyral-testing-0.3.1-next.9.tgz",
+    "@gyral/devtools": "0.3.1",
+    "@gyral/testing": "0.3.1",
     "@types/node": "^24.0.0",
     "@types/three": "^0.186.0",
     "@typescript-eslint/parser": "~8.71.0",
@@ -48,8 +48,5 @@
     "typescript": "~5.9.3",
     "vite": "~8.3.3",
     "vitest": "~4.1.10"
-  },
-  "overrides": {
-    "@gyral/core": "$@gyral/core"
   }
 }
