@@ -1,6 +1,34 @@
-# Gyral feedback from Sabacc (0.3.0 → 0.3.1-next.6)
+# Gyral feedback from Sabacc (0.3.1)
 
-For the Gyral team, relayed by the owner. Written 2026-10-09, after upgrading Sabacc from
+For the Gyral team, relayed by the owner. Latest review: 2026-10-11, on the published
+npm 0.3.1 packages.
+
+## Current status (2026-10-11)
+
+The stable migration is complete and released. We found no new Gyral runtime defect in
+this migration: the 179-test gate, production browser validation and Docker smoke checks
+pass. No further application API changes were needed after next.9.
+
+- **Resolved:** empty stateless tables, payload-free parser ceremony, unnecessary success
+  handlers, manual subscription start/stop logic, handwritten Gyral element declarations,
+  vendored packages/core overrides and the missing packaged 0.3.1 release history.
+- **Already available:** `IntentNames` and `commandsFor`/`inputsFor`; we adopted
+  `IntentNames`/`inputsFor`, typed driver tokens and imperative-widget lifecycle guidance.
+  Our earlier command-inspection request was a discoverability mistake, not a missing API.
+- **Highest priority now:** align the skill's existing watch/provider examples with
+  `subscriptions` and driver tokens, document recovery of state-owned delays, and clarify
+  the boundary between Gyral settlement and external-renderer visual readiness.
+- **Optional ergonomics:** typed plain custom-event adapters, per-input driver result
+  types and a type-only component-intent helper. Prerelease distribution and peer core
+  dependencies are future packaging suggestions; the stable installation has no blocker.
+
+The [npm migration appendix](#appendix-npm-031-migration-2026-10-11) and its
+[current requests](#current-requests-to-relay) describe the latest results. Earlier sections
+are dated history; their upgrade status and resolved requests are superseded by this summary.
+
+## Original next.6 feedback (2026-10-09)
+
+Written 2026-10-09, after upgrading Sabacc from
 0.3.1-next.1 to 0.3.1-next.6 (bead `sabacc-uxn`). Earlier feedback (bead `sabacc-nc4`, from
 0.3.0) is answered in 0.3.1 and isn't repeated here.
 
@@ -265,7 +293,10 @@ and an element for anything that owns a render loop or WebGL context, or emits e
 
 ## How Gyral compares, by topic
 
-| Topic | Gyral 0.3.1 | Closest elsewhere |
+This is the historical next.6 comparison; the current status above supersedes its
+resolved gaps.
+
+| Topic | Gyral 0.3.1-next.6 | Closest elsewhere |
 |---|---|---|
 | Component logic tested without a DOM | `step()` / `initial()` on `Component.spec` | Elm, Redux reducers; React/Solid/Svelte need a DOM or extracted logic |
 | Effects | Commands as data; drivers provided by subtree; lanes (`switch`, …) | Elm `Cmd`; RxJS `switchMap`; ember-concurrency; React `useEffect` (no lanes) |
@@ -551,3 +582,59 @@ themes pass. Representative classic, 3D, shift and enlarged player-list captures
 reviewed. The initial full-run and targeted regression reports are preserved in `.drive/`.
 The corrected multiplayer replay also passes. Final coverage across the full run and
 targeted phone/multiplayer reruns is **43 cases with zero console/page/layout errors**.
+
+### Current requests to relay
+
+1. **Make the existing skill examples teach the adopted lifecycle pattern.** In the
+   Gyral checkout inspected for this review, `skills/gyral/references/outside-stores.md`
+   still starts `watchCounter()` and both mailbox watches from `init`. Its per-page binding
+   example also uses a throwing `unboundDraft` subscription. These patterns predate the
+   declarative subscriptions and driver tokens that removed our corresponding workarounds.
+   The opening of `references/update-and-commands.md` still suggests starting a router
+   listener from `init`, although its subscriptions section puts `listen` in the right place.
+   Align these examples: initialise state in `init`, return continuous watches from
+   `subscriptions`, and use a typed driver token when a page must provide the implementation.
+   For the counter, the relevant spec fields become:
+
+   ```ts
+   init: () => ({ n: 0 }),
+   subscriptions: () => [watchCounter()],
+   ```
+
+   Include a test that removes the element, awaits teardown, changes the external source,
+   and reattaches the same instance. Test a same-task move separately: it keeps commands
+   alive and cannot prove recovery after cancellation. Our original lifecycle regressions
+   and the implemented recovery are recorded in the next.9 appendices above.
+
+2. **Add a recipe for delays owned by pending state.** The general advice that one-shot
+   delays belong in reducers needs the playback exception: a delay derived from a pending
+   beat belongs in `subscriptions` when that beat must recover after reattachment. Show a
+   lane key containing both run and step, replies guarded by both values, and an explicit
+   resume-or-finish policy. Adjacent equal-duration beats and duplicate replies deserve
+   tests. Sabacc resumes the pending beat with its full delay after a genuine detach;
+   unrelated updates and same-task moves preserve elapsed time. This is documentation for
+   a working API, not a request to replay every command from `init`.
+
+3. **Clarify visual readiness for imperative widgets in the testing guide.** `settled()`
+   drains Gyral rendering and message work; a Three.js render loop, projected DOM labels,
+   font loading and camera motion need their own readiness conditions. Our capture-order
+   failure reproduced on next.9 and was fixed in the app harness without changing Gyral.
+   The harness waits for fonts and fresh scene frames before capturing and now audits the
+   label positions after that barrier. Recommend an explicit widget readiness barrier
+   before both measurement and capture; a fixed frame count is not a universal guarantee
+   that animations have finished. The existing timer/network caveat is useful, and this
+   would extend it to external renderers rather than expand `settled()`'s responsibilities.
+
+The remaining type improvements are lower priority. Installed 0.3.1 still exposes
+`IntentInput.detail` as `unknown`; a guarded plain-event adapter would improve our
+`stage-event` boundary. Our page driver's `Where | undefined` output still needs narrowing
+for `Where`; per-input typing or guidance on splitting operations into drivers would help.
+`IntentNames` and `intentsOf` exist, while a type-only `IntentsOf<typeof Component>` is absent
+from the installed core export inventory. None of these prevents the current app from working.
+
+Exact same-version core dependencies deduplicate correctly in the stable npm installation.
+We would discuss peer dependencies as a packaging design choice, not carry forward the
+old claim that this app still needs an override. Publishing future prereleases under a
+dist-tag would reduce the cost of future consumer trials. The packaged changelog concern
+is resolved for 0.3.1. Both release commits passed CI, and the production Docker image was
+published and verified after its smoke test.
