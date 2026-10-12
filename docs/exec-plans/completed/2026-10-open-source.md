@@ -50,3 +50,13 @@ maintainer's machine or anything private.
   (quality gaps).
 - History audit: no secrets, private IPs or registry hosts in any commit. `.idea/` and
   `pnpm-lock.yaml` added to `.gitignore`.
+- Repository recreated: a mirror of the old one (all refs, PR metadata, runner
+  credentials) was kept off-repo before deletion. `main`, `refs/dolt/data` and
+  `__dolt_remote_info__` were pushed; the old pre-rewrite SHAs return "No commit found".
+  The runner was registered again with the guard hook, and the first CI run logged
+  `runner-guard: ok (push refs/heads/main by mikezupper)`.
+- Settings: topics, homepage, wiki and projects off, branches
+  deleted on merge; Actions limited to GitHub-owned actions with a read-only token.
+  After going public: fork-PR workflows need approval for all external contributors,
+  private vulnerability reporting, secret scanning with push protection, Dependabot
+  alerts, and `main` protected against force-pushes and deletion.
