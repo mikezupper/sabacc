@@ -53,7 +53,7 @@ export const isSuitedValue = (c: Card, value: number): boolean => c._tag === "Su
 
 const signed = (n: number): string => (n > 0 ? `+${n}` : `${n}`)
 
-/** "Master of Coins (+14)", "7 of Sabers (+7)", "Balance (−11)". */
+/** "Master of Coins (+14)", "7 of Sabers (+7)", "Balance (-11)". */
 export const describeCard = Card.$match({
   Suited: ({ suit, value }) => `${RANK_NAMES[value] ?? String(value)} of ${suit} (${signed(value)})`,
   Face: ({ name, value }) => `${name} (${signed(value)})`,

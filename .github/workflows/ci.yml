@@ -1,13 +1,18 @@
 name: ci
 
-# Runs on the self-hosted runner on the dev machine (label `sabacc`), not on
-# GitHub-hosted runners, so it uses no Actions minutes. It reuses the machine's
-# Node (fnm, v24) and Playwright Chromium. Only pushes to main and manual runs
-# trigger it, so nobody else can run code on that machine.
+# Runs on the maintainer's self-hosted runner (label `sabacc`), not on GitHub-hosted
+# runners, so it uses no Actions minutes. It reuses the machine's Node (v24) and
+# Playwright Chromium. Only pushes to main and manual runs trigger it. Never add
+# `pull_request` or `pull_request_target`: the repo is public and a fork's code would
+# run on that machine. The runner also refuses any other job itself
+# (scripts/ci/runner-guard.sh), since a fork PR could bring its own workflow file.
 on:
   push:
     branches: [main]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ci-${{ github.ref }}

@@ -8,6 +8,13 @@ dist/
 .vitest-attachments/
 test/browser/__screenshots__/
 
+# Editors and other package managers (this repo uses npm)
+.idea/
+.vscode/
+.claude/settings.local.json
+pnpm-lock.yaml
+yarn.lock
+
 # Beads / Dolt files (added by bd init)
 .dolt/
 *.db

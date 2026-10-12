@@ -1,12 +1,33 @@
 {
   "name": "sabacc",
   "version": "0.1.0",
+  "description": "Classic (Legends) Star Wars Sabacc in the browser: a pure Effect rules engine, Gyral web components, a Three.js table and a multiplayer server",
   "license": "MIT",
   "author": "Mike Zupper",
+  "homepage": "https://sabacc.starwars.run/",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mikezupper/sabacc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mikezupper/sabacc/issues"
+  },
+  "keywords": [
+    "sabacc",
+    "star-wars",
+    "card-game",
+    "browser-game",
+    "effect",
+    "gyral",
+    "web-components",
+    "threejs",
+    "multiplayer",
+    "typescript"
+  ],
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "dev": "vite",

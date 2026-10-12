@@ -3,7 +3,7 @@
 Researched 2026-10-04 for bead `sabacc-692`. Sources are Wookieepedia (read via its
 MediaWiki API), StarWars.com and fan transcriptions of West End Games' *Crisis on
 Cloud City* (1989), marked [fan]. The table below describes the **house variant this
-game used until 2026-10-04**. The game is now being moved to Legends rules (epic
+game used until 2026-10-04**. The game moved to Legends rules that day (epic
 `sabacc-ecb`, [spec](../product-specs/sabacc-rules.md)).
 
 ## Status
@@ -51,8 +51,8 @@ weakened to suppress it (bead `sabacc-byq`).
   hand's value is the difference between your two cards, and 0 is a sabacc.
   Impostor cards take a dice-rolled value; sylops copy the other card. [13][14]
 
-Our ±1…±10 suits with zeros look like Corellian Spike's deck, used with the Legends
-±23 target.
+The old house variant's ±1…±10 suits with zeros looked like Corellian Spike's deck,
+used with the Legends ±23 target. The current game uses the 76-card Legends deck.
 
 ## Unconfirmed or conflicting sources
 

@@ -53,6 +53,8 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
 - Styles: `styles: [base, buttons, css\`…\`]`; `src/styles/shared.ts` exports plain CSS text
   built on the tokens in `global.css`.
 - Element names use the `sabacc-` prefix, one element per file, file name = element name.
+  The one exception is `src/scene/plates.ts`, which holds the two small 3D labels
+  (`sabacc-plate` and `sabacc-pot`).
 - `npm run typecheck` runs `gyral-types` before `tsc`, generating all nine Gyral tag
   declarations in ignored `.gyral/elements.d.ts` (explicitly included in tsconfig).
   Only the plain `sabacc-stage` needs a handwritten declaration. No special
@@ -135,7 +137,9 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
 
 ## CSS
 
-- Every stylesheet uses `@layer reset, tokens, base, layout, components, utilities`.
+- The global stylesheet (`src/styles/global.css`) declares
+  `@layer reset, tokens, base, layout, components, utilities`. Component styles live in
+  each element's shadow root, so they need no layers; they build on the global tokens.
 - All colour in `oklch()`, both themes through `color-scheme: light dark` and `light-dark()`.
 - Logical properties (`inline-size`, `margin-block`), container queries for components,
   hit targets ≥ 44px, visible `:focus-visible`.
@@ -148,7 +152,7 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   Most of it is Effect. The stores use our own `Cell` (`src/state/cell.ts`) instead of a
   signals library (−2.4 KB), and Vite's modulepreload polyfill is off.
 - On Gyral 0.3.1-next.1 with `gyralVitePreset({ clientOnly: true })` (no hydration code;
-  nothing here is server-rendered) and `delay` from `@gyral/time/delay`: classic **86.1 KB**,
+  nothing here is server-rendered) and `delay` from `@gyral/time/delay` (now imported from `@gyral/time`): classic **86.1 KB**,
   3D **242.2 KB** gzip. On 0.3.1-next.6 (2026-10-09): classic **86.9 KB**, 3D **243.0 KB**
   (+0.8 KB each, almost all of it Gyral's error channel).
   After the complete next.9 upgrade (2026-10-10), current JS + CSS totals across each
@@ -158,7 +162,7 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   measurement is **87,434 bytes classic / 244,642 bytes 3D**.
   The owner accepted the Effect-heavy size: no size budget in CI, no move off Effect.
   Re-measure only if a real-user performance problem appears.
-- The 3D page's chunk carries Three.js and the scene (~635 KB / 163 KB gzip) and only
+- The 3D page's chunk carries Three.js and the scene (~640 KB / 161 KB gzip on 2026-10-11) and only
   `3d.html` loads it. `chunkSizeWarningLimit` is 700 KB for that reason.
 - Keep each entry's imports static (`src/entry-table.ts` first, then the components): a
   dynamic import split the pages into eight chunks and cost about 6 KB gzip.

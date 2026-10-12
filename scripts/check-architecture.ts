@@ -15,7 +15,8 @@ const load = (paths: ReadonlyArray<string>): ReadonlyArray<SourceFile> =>
   paths.map((p) => ({ path: relative(root, p).split("\\").join("/"), text: readFileSync(p, "utf8") }))
 
 const sources = load(walk(join(root, "src")))
-const docs = load([join(root, "AGENTS.md"), join(root, "ARCHITECTURE.md"), ...walk(join(root, "docs"))])
+const topLevel = ["AGENTS.md", "ARCHITECTURE.md", "README.md", "CONTRIBUTING.md", "SECURITY.md", "CODE_OF_CONDUCT.md"]
+const docs = load([...topLevel.map((name) => join(root, name)), ...walk(join(root, "docs")).filter((p) => p.endsWith(".md"))])
 
 const violations = [...checkSources(sources), ...checkDocs(docs, (p) => existsSync(join(root, p)))]
 

@@ -38,14 +38,14 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | `npm run dev` | Vite dev server at http://localhost:5173 (`?seed=42` replays a game; 3D at `/3d.html`) |
 | `npm run dev:server` | Multiplayer server on :8787 (Vite proxies `/api` and `/ws` to it) |
 | `npm start` | The built site + multiplayer server on :8080 (what the image runs) |
-| `npm run check` | Everything below, in order; the merge gate |
-| `npm run typecheck` | `tsc --noEmit`, strict |
-| `npm run lint:arch` | Layer edges + domain purity + doc links (`scripts/check-architecture.ts`) |
+| `npm run check` | `typecheck` → `lint:arch` → `lint:templates` → `test` → `build`; the merge gate |
+| `npm run typecheck` | `gyral-types` (element typings into `.gyral/`), then `tsc --noEmit`, strict |
+| `npm run lint:arch` | Layer edges, domain purity, file sizes, single runtime, doc links (`scripts/check-architecture.ts`; rules in ARCHITECTURE.md) |
 | `npm run lint:templates` | Gyral's template rules over `src/components` and `src/scene` (ESLint) |
-| `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium) |
+| `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium); `test:unit`, `test:browser` run one |
 | `npm run build` | Production build to `dist/` |
 | `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |
-| `npm run drive` | Boot the build, play scripted paths in Chromium (both themes, desktop + phone; `3d`, `3d-shift`; `multiplayer`: real server, two browsers); screenshots + console errors in `.drive/` |
+| `npm run drive` | Boot the build, play scripted paths in Chromium (`--path` one of `full`, `fold`, `playback`, `reattach`, `restore`, `rules`, `3d`, `3d-shift`, `3d-reattach`, `3d-layout`, `3d-zoom`, `multiplayer` (real server, two browsers); `--scheme dark\|light`, `--viewport desktop\|phone`); screenshots + console errors in `.drive/` |
 | `./scripts/docker-build.sh` | Image for linux/amd64, tags `<sha>` + `latest`; `IMAGE=…` names it ([DEPLOY](docs/DEPLOY.md)) |
 
 ## Invariants (enforced — don't work around them)
@@ -53,8 +53,8 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 1. `src/domain/` is pure: imports only `effect`; no `throw`, `async`, `Math.random`,
    `Date.now`, DOM, UI frameworks. Randomness comes from Effect's `Random` service.
 2. Game state changes only through `applyCommand` in `src/domain/engine.ts`, run by
-   the store in `src/state/store.ts`. Never keep game state in a component, a 3D
-   scene object or a timer.
+   the store in `src/state/store.ts` (solo) or the server's `Room` (multiplayer).
+   Never keep game state in a component, a 3D scene object or a timer.
 3. Changing a rule means editing the spec first, then the domain, then the rules copy
    in `index.html`. `test/unit/rules-copy.test.ts` catches drift.
 4. Every fixed bug gets a regression test that fails on the old behaviour.
@@ -77,16 +77,18 @@ open `http://localhost:5173/?seed=42`. The page shows the seed; put it in bug be
 
 ## CI
 
-GitHub Actions on a **self-hosted runner** on the dev machine: no hosted minutes.
-`.github/workflows/ci.yml` runs `npm run check` on pushes to `main` and manual runs only
-(the repo is private; never add `pull_request` triggers for forks). Runner: `dev-rig-sabacc`
-(label `sabacc`), installed in `~/.local/share/actions-runner-sabacc`, run by the user
-service `sabacc-actions-runner` (`systemctl --user status sabacc-actions-runner`).
+GitHub Actions on the maintainer's **self-hosted runner** (label `sabacc`): no hosted
+minutes, by the owner's choice. `.github/workflows/ci.yml` runs `npm run check` on pushes
+to `main` and manual runs only. The repo is public, so **never add `pull_request` or
+`pull_request_target` triggers**, and never approve a fork's workflow run. The runner's
+job-started hook (`scripts/ci/runner-guard.sh`, installed outside the checkout) refuses
+any other job even if a fork brings its own workflow file. Outside contributors run
+`npm run check` locally ([CONTRIBUTING.md](CONTRIBUTING.md)).
 Watch a run with `gh run watch -R mikezupper/sabacc`.
 
 ## Git
 
-Remote: `git@github.com:mikezupper/sabacc.git` (private), branch `main`.
+Remote: `git@github.com:mikezupper/sabacc.git` (public), branch `main`.
 Conservative: do not commit or push unless the user asks. At hand-off, report changed
 files, `npm run check` output and bead status.
 No `Co-Authored-By` trailers, AI attribution or "Generated with" lines in commit

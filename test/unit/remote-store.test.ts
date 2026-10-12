@@ -65,7 +65,7 @@ describe("createRemoteStore", () => {
     expect(sockets[0]!.sent[0]).toEqual({ _tag: "Join", room: "ABC234", name: "Han", token: "tok" })
   })
 
-  it("fills the same signals the views read, from the server's messages", () => {
+  it("fills the same cells the views read, from the server's messages", () => {
     const { store, sockets, storage, room } = setup()
     const s = sockets[0]!
     s.onopen?.()

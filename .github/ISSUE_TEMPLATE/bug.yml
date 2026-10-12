@@ -1,0 +1,51 @@
+name: Bug report
+description: Something in the game or the server doesn't work as it should.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the report. The seed shown under the table lets anyone replay your table
+        exactly, so it's the most useful thing you can give.
+  - type: dropdown
+    id: view
+    attributes:
+      label: Where
+      options:
+        - Classic table (index.html)
+        - 3D table (3d.html)
+        - Multiplayer table (?room=…)
+        - Server / Docker image
+        - Development tooling (npm scripts, tests)
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+      description: If it's a scoring or rules question, say which rule in docs/product-specs/sabacc-rules.md you think it breaks.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open https://sabacc.starwars.run/?seed=42
+        2. Deal a hand, bet 200…
+    validations:
+      required: true
+  - type: input
+    id: seed
+    attributes:
+      label: Seed
+      description: Shown under the table, or in the side panel in 3D ("Seed 42"). Leave empty for a multiplayer table.
+  - type: input
+    id: browser
+    attributes:
+      label: Browser, OS and screen
+      placeholder: Firefox 131, Android, phone portrait
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or console errors

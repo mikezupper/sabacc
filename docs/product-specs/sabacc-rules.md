@@ -25,11 +25,15 @@ Every rule is tagged with its source. Full citations are in
 | Opponents | 4 | `OPPONENT_COUNT` | [H] |
 | Ante to the hand pot | 100 | `HAND_ANTE` | [H] amount; equal antes [F HP] |
 | Ante to the Sabacc pot | 100 | `SABACC_ANTE` | [L] both pots; [F HP] equal |
+| Credits needed to be dealt in (both antes) | 200 | `BUY_IN` | follows from the antes |
 | Minimum opening bet and minimum raise | 100 | `MIN_BET` | [H] |
 | Cards dealt | 2 | `HAND_SIZE` | [L][F] |
-| Shift trigger | doubles on two six-sided dice (1 in 6) | `SHIFT_ODDS` | [F PG] |
+| Fewest cards a hand may hold | 2 | `MIN_HAND` | [F HP] |
+| Shift trigger | doubles on two six-sided dice (1 in 6) | `DICE_SIDES` (6) | [F PG] |
 | Sabacc target | 23 | `SABACC` | [L] |
+| First round after which a player may call | 1 | `CALL_FROM_ROUND` | [L][F HP] |
 | Round cap before the dealer must call | 10 | `MAX_ROUNDS` | [H] safety cap |
+| Most extra cards per tied player in sudden demise | 2 | `SUDDEN_DEMISE_CARDS` | [L] |
 | Multiplayer: seconds per decision | 45 | `TURN_SECONDS` | [H] owner |
 | Multiplayer: seconds a dropped seat waits for its player | 30 | `GRACE_SECONDS` | [H] owner |
 | Multiplayer: seconds between hands | 20 | `AUTO_DEAL_SECONDS` | [H] |

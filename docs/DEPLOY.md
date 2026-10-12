@@ -75,13 +75,18 @@ restore, stop the service, put the copy at `/data/sabacc.db` in the volume, and 
 
 ## Settings
 
+`compose.yml` passes every server setting below from `.env` into the container
+(`.env.example` lists them with their defaults); `PORT`, `DATA_DIR` and `STATIC_DIR`
+are fixed by the image.
+
 | Variable | Default | Meaning |
 |---|---|---|
 | `SABACC_IMAGE`, `SABACC_TAG` | `sabacc`, `latest` | Image to run (compose only) |
 | `SABACC_HOST` | — (required) | Host name Traefik routes here (compose only) |
 | `TRAEFIK_NETWORK`, `TRAEFIK_ENTRYPOINT`, `TRAEFIK_CERTRESOLVER` | `traefik`, `websecure`, `letsencrypt` | Your Traefik names (compose only) |
 | `PORT` | `8080` | Listening port inside the container |
-| `DATA_DIR` | `/data` | SQLite database and backups |
+| `DATA_DIR` | `.data` (`/data` in the image) | SQLite database and backups |
+| `STATIC_DIR` | `dist` (`/app/dist` in the image) | The built site the server serves |
 | `TURN_SECONDS` | `45` | Turn clock; on timeout: check if possible, else fold / stand / pass |
 | `GRACE_SECONDS` | `30` | A dropped player's seat waits this long before the AI plays it |
 | `AUTO_DEAL_SECONDS` | `20` | Pause between hands before the next deal |

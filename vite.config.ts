@@ -1,4 +1,5 @@
 import { resolve } from "node:path"
+import { env } from "node:process"
 import { gyralVitePreset } from "@gyral/core/vite"
 import { defineConfig } from "vite"
 
@@ -11,7 +12,7 @@ export default defineConfig({
     target: "es2022",
     // Every browser that runs this site's CSS supports <link rel="modulepreload">.
     modulePreload: { polyfill: false },
-    // The 3D page's chunk carries Three.js (~620 KB, 160 KB gzip); the 2D page never loads it.
+    // The 3D page's chunk carries Three.js (~640 KB, 161 KB gzip); the 2D page never loads it.
     chunkSizeWarningLimit: 700,
     // Two pages, one engine: the classic table and the 3D table share chunks.
     rollupOptions: {
@@ -22,7 +23,9 @@ export default defineConfig({
     },
   },
   server: {
-    allowedHosts: ["localhost", ".pages.dev", ".open-pool.com", ".video-miner.xyz"],
+    // Extra host names for reaching the dev server through a tunnel or proxy, comma
+    // separated (e.g. SABACC_DEV_HOSTS=.example.com). Kept out of the repo.
+    allowedHosts: ["localhost", ...(env["SABACC_DEV_HOSTS"]?.split(",").filter(Boolean) ?? [])],
     // Multiplayer in development: run `npm run dev:server` next to `npm run dev`.
     proxy: {
       "/api": "http://localhost:8787",

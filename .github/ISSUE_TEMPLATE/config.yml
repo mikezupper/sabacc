@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/mikezupper/sabacc/security/advisories/new
+    about: Report it privately, not as an issue (see SECURITY.md).
+  - name: Rules reference
+    url: https://github.com/mikezupper/sabacc/blob/main/docs/product-specs/sabacc-rules.md
+    about: How the game is meant to play. Check it before reporting a rules bug.

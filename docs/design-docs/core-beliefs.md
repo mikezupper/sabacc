@@ -18,8 +18,8 @@ names the mechanism that keeps it true.
 6. **Enforce invariants mechanically, not by review.** Layer edges, domain purity and
    rules-copy drift are checked by scripts and tests whose error messages say how to
    fix the problem. → `npm run check`.
-7. **The platform first.** Semantic HTML (`<dialog>`, `<meter>`, `<details>`,
-   `<output>`), modern CSS (layers, oklch, container queries) and Gyral web components. No UI kits, no
+7. **The platform first.** Semantic HTML (`<details>`, `<output>`, `<data>`,
+   `<dl>`), modern CSS (layers, oklch, container queries) and Gyral web components. No UI kits, no
    CSS-in-JS runtime, no React. → [`FRONTEND.md`](../FRONTEND.md).
 8. **Pay debt continuously.** Anything found and not fixed becomes a bead linked with
    `discovered-from`. → [`exec-plans/tech-debt-tracker.md`](../exec-plans/tech-debt-tracker.md).

@@ -40,7 +40,7 @@ server/  (Node only)  → protocol/, domain/             rooms, timers, SQLite, 
 | `src/server/` | `effect`, `@effect/platform`, `@effect/platform-node`, `node:*`, `src/protocol`, `src/domain` | `@gyral/*`, `three`, browser layers |
 | `src/presentation/` | `effect`, `src/domain` | `@gyral/*`, `three`, `src/state`, `src/components` |
 | `src/components/` | `@gyral/core`, `@gyral/time`, `@gyral/http`, `effect`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | `three`, `src/scene` |
-| `src/scene/` | `three`, `@gyral/*`, `effect`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
+| `src/scene/` | `three`, `@gyral/core`, `@gyral/time`, `@gyral/http`, `effect`, `src/components`, `src/state`, `src/presentation`, `src/domain`, `src/styles` | — |
 | `src/styles/` | nothing (plain CSS text) | everything |
 | `src/entry-client.ts`, `src/entry-3d.ts`, `src/entry-table.ts` | anything | — |
 
@@ -51,6 +51,11 @@ Extra rules for `src/domain/` (also enforced by `lint:arch`):
 no `throw`, `try`, `async`/`await`, `Math.random`, `Date.now`/`new Date`, `any`,
 non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files ≤ 300 lines.
 
+Everywhere else in `src/`: files ≤ 400 lines, no `.jsx`/`.tsx`, no exported `then`, and
+`Effect.run*`/`runMain` only in the two runtime files above. `AGENTS.md` stays under
+120 lines (it's a map), and relative links in the top-level Markdown files and `docs/`
+must resolve.
+
 ## Data flow
 
 1. A component returns `play(move)`, a command for the **table driver**
@@ -60,7 +65,7 @@ non-null `!` assertions, `class` except `Data.TaggedError`/`Data.Class`; files �
    Each page provides the driver for its store in `src/entry-table.ts`.
 2. The store runs `applyCommand(game, command)` from `src/domain/engine.ts`
    **once, synchronously**, with the store's seeded `Random` service.
-   This is the only `Effect.run*` call in `src/` outside tests.
+   Effects run only here and in `src/server/main.ts` (`lint:arch` enforces it).
 3. The engine returns `{ game, beats }`. Your action, then every opponent turn,
    shift roll and step change up to your next decision (or the end of the hand),
    resolve in **one** transition (`advance` in `flow.ts`). Each beat pairs an event
@@ -125,7 +130,7 @@ the classic table. Both pages share the saved table.
 All randomness (shuffles, dice, shifted card designs, opponent bluffs) goes through Effect's
 `Random` service. `?seed=<int>` in the URL fixes the seed, so any game can be
 replayed exactly. Tests use fixed seeds; bug reports should include the seed shown
-in the page footer.
+under the classic table (in the side panel in 3D).
 
 ## Persistence
 
@@ -143,6 +148,7 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | 76-card deck, card names | `src/domain/cards.ts` |
 | Totals, bomb-out, Idiot's Array, ranking | `src/domain/scoring.ts` |
 | Game, seat, step, command, event and error types | `src/domain/model.ts` |
+| New table and seat queries (in the hand, all-in, pot totals) | `src/domain/table.ts` |
 | No-limit betting round | `src/domain/betting.ts` |
 | Side-pot layering | `src/domain/pots.ts` |
 | Rounds, shift, call window, opponent turns | `src/domain/flow.ts` |
@@ -151,6 +157,7 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | Your commands → transition | `src/domain/engine.ts` |
 | Save format and invariants | `src/domain/schema.ts` |
 | Store and runtime | `src/state/store.ts` |
+| Observable value the stores expose (`Cell`) | `src/state/cell.ts` |
 | Browser storage adapter | `src/state/persistence.ts` |
 | Wording for events, results, errors | `src/presentation/describe.ts` |
 | Status line ("Betting: 200 to match") | `src/presentation/prompt.ts` |
@@ -160,19 +167,24 @@ A `?seed=` link is an unsaved replay. Bump `SAVE_VERSION` when the `Game` shape 
 | Prop schemas (identity-preserving) | `src/components/prop-schemas.ts` |
 | Stage element, 3D name plates | `src/scene/sabacc-stage.ts`, `src/scene/plates.ts` |
 | Action controls (both views) | `src/components/sabacc-controls.ts` |
+| Classic table, a seat, a card, the game log | `src/components/sabacc-table.ts`, `sabacc-seat.ts`, `sabacc-card.ts`, `sabacc-log.ts` |
+| Names, spectator flag, presence for a snapshot | `src/components/table-context.ts` |
 | Seed and store start-up (both pages) | `src/state/boot.ts` |
 | 3D element, HUD | `src/scene/sabacc-3d.ts`, `src/scene/hud-styles.ts` |
 | 3D renderer, camera, picking, loop | `src/scene/stage.ts` |
 | Snapshot → 3D objects, beat effects | `src/scene/board.ts`, `src/scene/effects.ts` |
 | 3D placement math | `src/scene/layout.ts` |
+| 3D cards, chips/deck/dice, easing, canvas textures, beat delays | `src/scene/card-view.ts`, `props.ts`, `motion.ts`, `textures.ts`, `timing.ts` |
 | 3D page | `3d.html`, `src/entry-3d.ts` |
 | Design tokens and global CSS | `src/styles/global.css`, `src/styles/shared.ts` |
 | Static page, rules copy, SEO head | `index.html` |
 | Per-player views (redaction, seat rotation) | `src/domain/view.ts` |
 | Wire messages | `src/protocol/messages.ts` |
 | Remote store, boot by `?room=` | `src/state/remote-store.ts`, `src/state/boot.ts` |
+| Opening a table (`POST /api/rooms`) | `src/state/rooms-api.ts` |
 | Room panel (invite, players, clock) | `src/components/sabacc-room.ts` |
 | A table on the server (seats, timers, broadcast) | `src/server/room.ts` |
 | Rooms registry, SQLite, HTTP + WebSocket | `src/server/rooms.ts`, `src/server/db.ts`, `src/server/http.ts` |
 | Server entry, settings | `src/server/main.ts`, `src/server/app.ts`, `src/server/config.ts` |
+| Database backup (`docker-backup.sh` runs it) | `src/server/backup.ts` |
 | Image, compose, deploy | `Dockerfile`, `compose.yml`, `scripts/docker-*.sh`, [docs/DEPLOY.md](docs/DEPLOY.md) |

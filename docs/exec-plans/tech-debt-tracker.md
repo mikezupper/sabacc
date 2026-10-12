@@ -3,6 +3,12 @@
 Beads is the live tracker (`bd list --label tech-debt`). This file is the
 human-readable summary, refreshed when debt is filed or paid.
 
+Open (filed 2026-10-12 from the gaps in [QUALITY_SCORE.md](../QUALITY_SCORE.md)):
+
+- `sabacc-gwd`: automated axe accessibility audit in the browser tests.
+- `sabacc-5yh`: a GPU performance budget for the 3D table.
+- `sabacc-d8e`: a load test for the multiplayer server.
+
 The vendored Gyral prerelease was replaced with exact npm 0.3.1 packages on
 2026-10-11 (`sabacc-92i`). The tarballs, core override and Docker vendor copies are gone;
 the upgrade is recorded in the [completed plan](completed/2026-10-gyral-0.3.1.md).
