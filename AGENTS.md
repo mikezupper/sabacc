@@ -77,14 +77,17 @@ open `http://localhost:5173/?seed=42`. The page shows the seed; put it in bug be
 
 ## CI
 
-GitHub Actions on the maintainer's **self-hosted runner** (label `sabacc`): no hosted
-minutes, by the owner's choice. `.github/workflows/ci.yml` runs `npm run check` on pushes
-to `main` and manual runs only. The repo is public, so **never add `pull_request` or
-`pull_request_target` triggers**, and never approve a fork's workflow run. The runner's
-job-started hook (`scripts/ci/runner-guard.sh`, installed outside the checkout) refuses
-any other job even if a fork brings its own workflow file. Outside contributors run
-`npm run check` locally ([CONTRIBUTING.md](CONTRIBUTING.md)).
-Watch a run with `gh run watch -R mikezupper/sabacc`.
+GitHub Actions uses fresh Xode workers (label `xode-linux-x64`) through this personal
+repository's registration. `.github/workflows/ci.yml` installs Node 24 and Chromium's system
+dependencies, then runs `npm run check` on pushes to `main` and manual runs only. There is no
+GitHub-hosted fallback and no runner on the development machine.
+
+The repo is public: never add `pull_request` or `pull_request_target` triggers or approve fork
+workflows. The fleet's mandatory job-start hook rejects those events before actions execute.
+Outside contributors run `npm run check` locally ([CONTRIBUTING.md](CONTRIBUTING.md)). The private
+`mikezupper/xode-actions-runners` repository owns enrollment, guard policy and disposable-worker
+cleanup. `scripts/ci/runner-guard.sh` records the retired workstation policy; it is not installed
+on the development machine. Watch a run with `gh run watch -R mikezupper/sabacc`.
 
 ## Git
 
