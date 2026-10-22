@@ -88,7 +88,7 @@ table. For multiplayer, also run `npm run dev:server`. The full command list is 
 
 ### About CI
 
-CI runs `npm run check` on a self-hosted runner, and only for pushes to `main` and manual
+CI runs `npm run check` on a disposable Xode worker, and only for pushes to `main` and manual
 runs by the maintainer. **It does not run on pull requests**, from forks or otherwise,
 and the runner refuses any other job. So:
 

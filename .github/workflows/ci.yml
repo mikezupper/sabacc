@@ -1,11 +1,8 @@
 name: ci
 
-# Runs on the maintainer's self-hosted runner (label `sabacc`), not on GitHub-hosted
-# runners, so it uses no Actions minutes. It reuses the machine's Node (v24) and
-# Playwright Chromium. Only pushes to main and manual runs trigger it. Never add
-# `pull_request` or `pull_request_target`: the repo is public and a fork's code would
-# run on that machine. The runner also refuses any other job itself
-# (scripts/ci/runner-guard.sh), since a fork PR could bring its own workflow file.
+# Fresh Xode workers use the existing personal repository registration.
+# Only trusted main pushes and manual runs execute; the fleet rejects PR events.
+
 on:
   push:
     branches: [main]
@@ -20,13 +17,21 @@ concurrency:
 
 jobs:
   check:
-    runs-on: [self-hosted, sabacc]
+    runs-on: xode-linux-x64
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Toolchain
-        run: node --version && npm --version
+        with:
+          persist-credentials: false
+      - name: Prepare the fresh worker
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --no-install-recommends -y build-essential python3 xz-utils unzip
+          sudo mkdir -p "$RUNNER_TOOL_CACHE"
+          sudo chown "$(id -u):$(id -g)" "$RUNNER_TOOL_CACHE"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - run: npm ci --no-audit --no-fund
-      # Downloads Chromium only if this Playwright version's build is missing.
-      - run: npx playwright install chromium
+      - run: npx playwright install --with-deps chromium
       - run: npm run check
