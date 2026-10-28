@@ -5,7 +5,7 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3.1, installed from npm at exact versions:
+The UI is [Gyral](https://gyral.dev) 0.3.7, installed from npm at exact versions:
 Model-View-Intent web components with their own view layer. Source skill: `gyral`
 (read from the Gyral checkout's `skills/gyral/`). The move
 from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.md).

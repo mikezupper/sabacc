@@ -12,6 +12,8 @@ Open (filed 2026-10-12 from the gaps in [QUALITY_SCORE.md](../QUALITY_SCORE.md))
 The vendored Gyral prerelease was replaced with exact npm 0.3.1 packages on
 2026-10-11 (`sabacc-92i`). The tarballs, core override and Docker vendor copies are gone;
 the upgrade is recorded in the [completed plan](completed/2026-10-gyral-0.3.1.md).
+Exact npm 0.3.7 followed on 2026-10-28 (`sabacc-hk7`) with no `src/` change; the
+Vitest preset no longer lists Gyral packages to pre-bundle, since 0.3.7 does that itself.
 
 The next.9 assessment and implementation feedback is ready in
 [gyral-feedback.md](../references/gyral-feedback.md) for the owner to relay. The local

@@ -6,7 +6,7 @@
 [![Node 24](https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![Effect](https://img.shields.io/badge/rules-Effect-black)](https://effect.website)
-[![Gyral 0.3.1](https://img.shields.io/badge/UI-Gyral%200.3.1-8A2BE2)](https://github.com/gyraljs/gyral)
+[![Gyral 0.3.7](https://img.shields.io/badge/UI-Gyral%200.3.7-8A2BE2)](https://github.com/gyraljs/gyral)
 [![Three.js](https://img.shields.io/badge/3D-Three.js-000000?logo=threedotjs&logoColor=white)](https://threejs.org/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -172,7 +172,7 @@ the 3D view, persistence and a "where things live" index.
 | Part | Uses |
 |---|---|
 | Rules engine | [Effect](https://effect.website) 3 (`Random`, `Schema`, tagged errors), TypeScript strict |
-| UI | [Gyral](https://github.com/gyraljs/gyral) 0.3.1 web components, modern CSS (layers, `oklch`, container queries) |
+| UI | [Gyral](https://github.com/gyraljs/gyral) 0.3.7 web components, modern CSS (layers, `oklch`, container queries) |
 | 3D | [Three.js](https://threejs.org/) with canvas-drawn textures, CSS2D name plates |
 | Server | Node 24, `@effect/platform-node` HTTP and WebSockets, `node:sqlite` |
 | Build and tests | Vite 8, Vitest 4 with Playwright Chromium, ESLint (Gyral template rules) |

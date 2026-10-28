@@ -638,3 +638,18 @@ old claim that this app still needs an override. Publishing future prereleases u
 dist-tag would reduce the cost of future consumer trials. The packaged changelog concern
 is resolved for 0.3.1. Both release commits passed CI, and the production Docker image was
 published and verified after its smoke test.
+
+## Appendix: npm 0.3.7 upgrade (2026-10-28)
+
+Sabacc moved all five packages from exact `0.3.1` to exact `0.3.7` (bead `sabacc-hk7`).
+They share one core. The bare upgrade passed typecheck, both lints, the 179 tests in 20
+files, the production build and every drive path, so nothing under `src/` changed. No
+template trips rule 15 or 16, no prop uses a reserved name, no component renders in the
+light DOM, and each page entry imports `src/entry-table.ts`, which provides the table
+drivers, before any component.
+
+The one edit is in `vitest.config.ts`: we dropped `optimize: ["@gyral/core", "@gyral/time",
+"@gyral/http"]`, since the 0.3.7 preset pre-bundles every installed Gyral package. The
+browser suite runs without a mid-run reload. Gzip level 9 totals rose by 27 bytes for the
+classic page (87,229 → 87,256) and 26 bytes for 3D (243,626 → 243,652), measured on both
+versions the same way.
