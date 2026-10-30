@@ -74,7 +74,9 @@ must resolve.
 4. The store sets its `game` cell (`src/state/cell.ts`), appends the events to `log`, sets `last` to the
    beats and, for a saved table, writes the game to storage. The table driver's
    `watchTable` notices the change and sends each watching component one
-   `TableChanged` message with a snapshot (game, beats, log, notice, room).
+   `TableChanged` message with a snapshot (game, beats, log, notice, room): its
+   `subscription` has `coalesce: "microtask"`, so a command's several cell changes
+   arrive as one snapshot.
 5. Each view plays the beats back one at a time (opponents' turns, shifts) and hides
    controls until they're shown. Playback is a pure model in its state
    (`src/presentation/playback.ts`); timers are `@gyral/time` commands that send

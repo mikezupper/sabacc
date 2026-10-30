@@ -119,6 +119,29 @@ describe("<sabacc-table>", () => {
     expect(output(el)?.textContent).toMatch(/at least [\d,]+ credits/)
   })
 
+  it("bets the amount typed in the bet field, and ignores the field while it's empty", async () => {
+    const { el, store } = await mount(9)
+    store.dispatch(Command.StartHand())
+    expect(until(store, "Betting")).toBe(true)
+    await settle(el)
+    const field = [...shadow(el).querySelectorAll("sabacc-controls")]
+      .map((c) => shadow(c).querySelector<HTMLInputElement>('input[type="number"]'))
+      .find((f) => f !== null)
+    expect(field).toBeDefined()
+    const type = async (text: string) => {
+      field!.value = text
+      field!.dispatchEvent(new Event("input", { bubbles: true, composed: true }))
+      await settle(el)
+    }
+    const to = Number(field!.min) + 300
+    await type(String(to))
+    await type("")
+    const bet = button(el, "Bet") ?? button(el, "Raise")
+    bet?.click()
+    await settle(el)
+    expect(store.log.get().some((e) => e._tag === "BetTo" && e.seat === YOU && e.to === to)).toBe(true)
+  })
+
   it("labels folded players", async () => {
     const { el, store } = await mount(3)
     store.dispatch(Command.StartHand())

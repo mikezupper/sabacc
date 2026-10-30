@@ -41,7 +41,7 @@ anything you find but don't fix with `--deps discovered-from:<id>`.
 | `npm run check` | `typecheck` → `lint:arch` → `lint:templates` → `test` → `build`; the merge gate |
 | `npm run typecheck` | `gyral-types` (element typings into `.gyral/`), then `tsc --noEmit`, strict |
 | `npm run lint:arch` | Layer edges, domain purity, file sizes, single runtime, doc links (`scripts/check-architecture.ts`; rules in ARCHITECTURE.md) |
-| `npm run lint:templates` | Gyral's template rules over `src/components` and `src/scene` (ESLint) |
+| `npm run lint:templates` | Gyral's ESLint rules over `src/components` and `src/scene`: templates, intent events, built-ins |
 | `npm test` | Vitest: `unit` project (node) and `browser` project (Playwright Chromium); `test:unit`, `test:browser` run one |
 | `npm run build` | Production build to `dist/` |
 | `npm run sim` | Play thousands of seeded hands headlessly; JSON stats (win types, rounds, shifts, bomb rate) |

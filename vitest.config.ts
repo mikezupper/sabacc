@@ -1,4 +1,4 @@
-import { gyralVitePreset } from "@gyral/core/vite"
+import { gyral } from "@gyral/core/vite"
 import { playwright } from "@vitest/browser-playwright"
 import { defineConfig } from "vitest/config"
 
@@ -7,9 +7,9 @@ export default defineConfig({
     projects: [
       { test: { name: "unit", environment: "node", include: ["test/unit/**/*.test.ts"], testTimeout: 30_000, hookTimeout: 30_000 } },
       {
-        // Components run in real Chromium with Gyral's runtime template checks. The preset
+        // Components run in real Chromium with Gyral's runtime template checks. `gyral()`
         // pre-bundles every installed Gyral package, so Vite never discovers one mid-run.
-        ...gyralVitePreset({ clientOnly: true }),
+        plugins: [gyral({ clientOnly: true })],
         test: {
           name: "browser",
           include: ["test/browser/**/*.test.ts"],

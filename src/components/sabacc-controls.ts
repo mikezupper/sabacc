@@ -7,7 +7,7 @@
 // (the 3D view also picks by clicking a card) and offers Lock / Trade for it. Without
 // `pick`, the classic table shows Lock / Trade under each card instead.
 import { Option } from "effect"
-import { css, define, each, html, intentsOf, nothing, outputs, prop, type PropsOf, type TemplateResult } from "@gyral/core"
+import { css, define, each, html, intentsOf, nothing, on, outputs, prop, type PropsOf, type TemplateResult } from "@gyral/core"
 import { cardTitle, describeCard, type Card } from "../domain/cards.ts"
 import { BUY_IN, MIN_BET } from "../domain/constants.ts"
 import { Command, YOU, type Game, type Seat } from "../domain/model.ts"
@@ -115,10 +115,8 @@ export const SabaccControls = define<State, Msg, ControlsProps, ControlsOutput>(
     Match: true,
     AllIn: true,
     Fold: true,
-    Amount: ({ value }) => {
-      const amount = Number(value)
-      return value !== undefined && value !== "" && Number.isFinite(amount) ? { _tag: "Amount", amount } : undefined
-    },
+    // A number input: `valueAsNumber` is undefined while it's empty or not a number.
+    Amount: on("input", ({ valueAsNumber: amount }) => (amount === undefined ? undefined : { _tag: "Amount", amount })),
     Bet: true,
     Gain: true,
     Stand: true,

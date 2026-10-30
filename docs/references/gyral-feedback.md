@@ -653,3 +653,59 @@ The one edit is in `vitest.config.ts`: we dropped `optimize: ["@gyral/core", "@g
 browser suite runs without a mid-run reload. Gzip level 9 totals rose by 27 bytes for the
 classic page (87,229 → 87,256) and 26 bytes for 3D (243,626 → 243,652), measured on both
 versions the same way.
+
+## Appendix: npm 0.3.8 upgrade (2026-10-29)
+
+Sabacc moved all five packages from exact `0.3.7` to exact `0.3.8` (bead `sabacc-pk0`). Core
+is now their peer, and `npm ls` shows one copy. The lockfile diff touches only these five.
+
+### What changed
+
+- `npx @gyral/codemod@0.3.8 0.3.8` rewrote `vite.config.ts` and `vitest.config.ts` from
+  `...gyralVitePreset({ clientOnly: true })` to `plugins: [gyral({ clientOnly: true })]`. It
+  left `provideTable`'s driver record, whose keys are computed (`[tableMoves.name]`). We moved
+  that by hand to a list: `tableMoves.provide(run)` and `subscription(tableSnapshots, …)`.
+- The table watch no longer batches by hand. It emitted after every cell change through its
+  own `queued` flag and `queueMicrotask`; now it emits each change and
+  `coalesce: "microtask"` delivers the latest snapshot once per microtask. Nine lines of
+  batching became one, and both pages' bundles shrank by 17 bytes.
+- `gyral/prefer-built-in` found two hand-written built-ins: the driver record above, and the
+  bet field's `Number(value)` parser, now `on("input", …)` reading `valueAsNumber`. A new
+  browser test types a bet, empties the field and bets; it passes on both parsers.
+  `gyral/intent-event` found nothing.
+- Render skipping changes nothing here. Every view reads only its state and props; the room
+  clock is state fed by `every()`, and the page address comes from a driver. Solo's table
+  context now hands `<sabacc-log>` one shared empty `names` array instead of a fresh one on
+  every render.
+
+### Rough edges
+
+1. **`coalesce` defers the first value too.** Our watch emitted the current snapshot at once
+   and batched only later changes, the shape of the outside-stores recipe. With
+   `coalesce: "microtask"`, the first snapshot arrives one microtask after subscribing.
+   Components can't tell before the next paint, and every browser test passed unchanged.
+   One unit test that runs the driver directly expected the first value at once; it now
+   awaits a microtask. The migration guide lists microtask batching as a workaround that
+   `coalesce` removes; it could add that the first value is deferred too.
+2. **Development checks are off in our browser tests, and G0017 then misreads pure views.**
+   Vite pre-bundles `@gyral/core` without the `development` condition, so the browser
+   project runs core's production build and no development check runs (Gyral `gyral-3pv`).
+   Unit tests in Node do get development. With the condition added to the pre-bundle in a
+   temporary config, and every console warning failing its test, G0017 named
+   `<sabacc-table>` and `<sabacc-3d>`. Both views are pure, but they hand a child property a
+   value built during the render: `.events=${table.log.slice(…)}`, `.view=${stage}`, and
+   `each(platesFor(…))` rows. The check compares those by identity (Gyral `gyral-nyy`).
+3. **`on()` has a byte cost.** It is a module of its own, as the changelog says. Our one
+   number-input parser pulls it in for 426 bytes of gzip on each page, about the same as
+   the rest of the 0.3.8 upgrade (419 bytes). `prefer-built-in` doesn't mention that cost.
+
+### Bundle size
+
+JS + CSS per page, deflate level 9 without headers, measured on all three builds the same way
+(our figure for 0.3.7 differs a little from the one in the 0.3.7 appendix):
+
+| Build | Classic | 3D |
+|---|---|---|
+| 0.3.7 (`main`) | 87,400 | 244,609 |
+| 0.3.8, packages only | 87,819 | 245,028 |
+| 0.3.8, this change | 88,234 | 245,442 |

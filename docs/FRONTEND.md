@@ -5,14 +5,18 @@ Source skills: gyral, modern-css, semantic-html, google-seo-fundamentals.
 
 ## Gyral
 
-The UI is [Gyral](https://gyral.dev) 0.3.7, installed from npm at exact versions:
+The UI is [Gyral](https://gyral.dev) 0.3.8, installed from npm at exact versions:
 Model-View-Intent web components with their own view layer. Source skill: `gyral`
 (read from the Gyral checkout's `skills/gyral/`). The move
 from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.md).
 
 - One loop per component: `intent` parses events into tagged messages, `update` has a pure
   reducer for every tag, `view` is a pure template that **names intents**
-  (`data-intent=${i.Check}`) and never holds closures.
+  (`data-intent=${i.Check}`) and never holds closures. A view reads only its state, props
+  and stores: Gyral renders a component only when one of them changes, so a view that read
+  a clock, the DOM or a module variable would go stale (development warns, G0017).
+  A parser that needs a typed event or a number input's value uses `on(event, parser)`
+  (`Amount` in `sabacc-controls` reads `valueAsNumber`).
   Payload-free intents use `Name: true`; pure views omit empty `intent` and `update`
   tables. Helper templates name their intent shape with `IntentNames<"Name" | "Other">`.
 - Import the view layer (`html`, `css`, `nothing`, `each`, `defineHook`) from `@gyral/core`.
@@ -23,12 +27,14 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   SVG: an `<svg>` element in an `html` template; optional SVG parts are `svg` fragments
   inside it (`sabacc-card`).
 - **Game state stays in the store.** Components reach it only through the table drivers
-  (`src/components/table-driver.ts`): `watchTable` (a Gyral `subscription()`) streams a
+  (`src/components/table-driver.ts`): `watchTable` (a Gyral `subscription()` with
+  `coalesce: "microtask"`, so one command's changes arrive as one snapshot) streams a
   snapshot (game, last beats, log, notice, room) into a `TableChanged` message,
   `play(move)` sends a move, `join(name)` sits down at a multiplayer table. Each page provides it with `provideTable` in
   `src/entry-table.ts`, imported before any component; tests provide it on a host element.
   Typed `tableMoves` and `tableSnapshots` tokens have no default implementation. Missing
-  providers report G0043 with the driver and component; bind them through `provideTable`.
+  providers report G0043 with the driver and component; bind them through `provideTable`,
+  which gives `provideDrivers` a list (`tableMoves.provide(run)`, `subscription(tableSnapshots, …)`).
 - Continuous table and reduced-motion watches belong in `subscriptions`, which restart
   after genuine removal and reattachment. Starting them in `init` loses that recovery.
   A move in the same task preserves them. The room clock is a conditional `every(1000, …)`
@@ -59,7 +65,8 @@ from Lit is recorded in the [exec plan](exec-plans/completed/2026-10-gyral-0.3.m
   declarations in ignored `.gyral/elements.d.ts` (explicitly included in tsconfig).
   Only the plain `sabacc-stage` needs a handwritten declaration. No special
   `useDefineForClassFields` setting is needed.
-- Template rules are checked three times: ESLint in the editor (`npm run lint:templates`),
+- Template rules are checked three times: ESLint in the editor (`npm run lint:templates`,
+  which also runs `gyral/intent-event` and `gyral/prefer-built-in`),
   the runtime in dev and tests, and the compiler in `vite build` (a break fails the build).
 - `@gyral/*` may be imported only in `src/components` and `src/scene` (`lint:arch`).
 - Test models without a DOM (`step`, `run` from `@gyral/testing`); test elements in
