@@ -6,7 +6,7 @@
 [![Node 24](https://img.shields.io/badge/node-24-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
 [![TypeScript strict](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](tsconfig.json)
 [![Effect](https://img.shields.io/badge/rules-Effect-black)](https://effect.website)
-[![Gyral 0.3.7](https://img.shields.io/badge/UI-Gyral%200.3.7-8A2BE2)](https://github.com/gyraljs/gyral)
+[![Gyral 0.3.8](https://img.shields.io/badge/UI-Gyral%200.3.8-8A2BE2)](https://github.com/gyraljs/gyral)
 [![Three.js](https://img.shields.io/badge/3D-Three.js-000000?logo=threedotjs&logoColor=white)](https://threejs.org/)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](CONTRIBUTING.md)
 
@@ -122,7 +122,7 @@ npm run check                     # typecheck, lints, unit + browser tests, prod
 | `npm run check` | `typecheck` → `lint:arch` → `lint:templates` → `test` → `build`; the merge gate |
 | `npm run typecheck` | Generates Gyral element typings, then `tsc --noEmit` (strict) |
 | `npm run lint:arch` | Layer edges, domain purity and doc links |
-| `npm run lint:templates` | Gyral's template rules (ESLint) over `src/components` and `src/scene` |
+| `npm run lint:templates` | Gyral's ESLint rules (templates, intent events, built-ins) over `src/components` and `src/scene` |
 | `npm test` | Vitest: `unit` (Node) and `browser` (Playwright Chromium) projects |
 | `npm run sim` | Plays thousands of seeded hands headlessly and prints JSON stats |
 | `npm run drive` | Boots the build and plays scripted paths in Chromium; screenshots in `.drive/` |
@@ -172,10 +172,10 @@ the 3D view, persistence and a "where things live" index.
 | Part | Uses |
 |---|---|
 | Rules engine | [Effect](https://effect.website) 3 (`Random`, `Schema`, tagged errors), TypeScript strict |
-| UI | [Gyral](https://github.com/gyraljs/gyral) 0.3.7 web components, modern CSS (layers, `oklch`, container queries) |
+| UI | [Gyral](https://github.com/gyraljs/gyral) 0.3.8 web components, modern CSS (layers, `oklch`, container queries) |
 | 3D | [Three.js](https://threejs.org/) with canvas-drawn textures, CSS2D name plates |
 | Server | Node 24, `@effect/platform-node` HTTP and WebSockets, `node:sqlite` |
-| Build and tests | Vite 8, Vitest 4 with Playwright Chromium, ESLint (Gyral template rules) |
+| Build and tests | Vite 8, Vitest 4 with Playwright Chromium, ESLint (Gyral's rules) |
 | Work tracking | [beads](https://github.com/gastownhall/beads) (`bd`) |
 
 ## Conventions

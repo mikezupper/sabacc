@@ -73,40 +73,34 @@ const cellsOf = (store: Store) => {
 
 /** The moves driver bound to one store: play a command, or sit down at a multiplayer table. */
 export const tableDriver = (store: Store): Driver<TableInput, undefined> =>
-  defineDriver<TableInput, undefined>({
-    name: tableMoves.name,
-    run: (input) => {
-      if (input._tag === "Play") store.dispatch(input.command)
-      else store.room?.join(input.name)
-      return undefined
-    },
+  tableMoves.provide((input) => {
+    if (input._tag === "Play") store.dispatch(input.command)
+    else store.room?.join(input.name)
+    return undefined
   })
 
 /**
- * The watch over one store (Gyral's `subscription()`): a snapshot now and after every
- * change. Changes made in one task (a command sets several values) arrive as one snapshot,
- * a microtask later. Gyral unsubscribes when the component disconnects and ignores emits
- * after that. (The Gyral docs' "outside stores" recipe is based on this.)
+ * The watch over one store (Gyral's `subscription()`): the current snapshot, then one after
+ * every change. `coalesce: "microtask"` delivers only the latest snapshot per microtask, so
+ * the changes made in one task (a command sets several values) arrive as one snapshot; the
+ * first one arrives a microtask after subscribing, too. Gyral unsubscribes when the component
+ * disconnects and ignores emits after that.
  */
 export const tableWatch = (store: Store): Driver<undefined, TableSnapshot> =>
-  subscription<TableSnapshot>(tableSnapshots.name, (emit) => {
-    let queued = false
-    const changed = () => {
-      if (queued) return
-      queued = true
-      queueMicrotask(() => {
-        queued = false
-        emit(snapshotOf(store))
-      })
-    }
-    const unsubscribe = cellsOf(store).map((c) => c.subscribe(changed))
-    emit(snapshotOf(store))
-    return () => unsubscribe.forEach((off) => off())
-  })
+  subscription(
+    tableSnapshots,
+    (emit) => {
+      const changed = () => emit(snapshotOf(store))
+      const unsubscribe = cellsOf(store).map((c) => c.subscribe(changed))
+      changed()
+      return () => unsubscribe.forEach((off) => off())
+    },
+    { coalesce: "microtask" },
+  )
 
 /** Make `store` the table for every Gyral component under `element`. Returns an undo. */
 export const provideTable = (element: Element, store: Store): (() => void) =>
-  provideDrivers(element, { [tableMoves.name]: tableDriver(store), [tableSnapshots.name]: tableWatch(store) })
+  provideDrivers(element, [tableDriver(store), tableWatch(store)])
 
 /** Send a move to the table. The result comes back through `watchTable`, never here. */
 export const play = (move: GameCommand): Command<never> => command(tableMoves, { _tag: "Play", command: move })

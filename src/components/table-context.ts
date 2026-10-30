@@ -27,10 +27,13 @@ export const revealedSeats = (game: Game): ReadonlySet<number> => {
   return new Set(last?.revealed ? last.seats.filter((r) => Option.isSome(r.evaluation)).map((r) => r.seat) : [])
 }
 
+/** Solo's seat names: one array, so `<sabacc-log .names>` gets the same value every render. */
+const NO_NAMES: ReadonlyArray<string> = []
+
 /** The context for drawing `game` (the live game or a playback frame) at `table`. */
 export const tableContext = (table: TableSnapshot, game: Game): TableContext => {
   const room = table.room
-  if (room === undefined) return { spectator: false, narrator: solo, names: [], presence: () => undefined, canStartNewTable: true, revealed: revealedSeats(game) }
+  if (room === undefined) return { spectator: false, narrator: solo, names: NO_NAMES, presence: () => undefined, canStartNewTable: true, revealed: revealedSeats(game) }
   const spectator = room.spectator
   const connected = room.presence.connected
   return {

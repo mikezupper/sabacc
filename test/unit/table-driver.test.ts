@@ -25,6 +25,9 @@ describe("table driver", () => {
       () => "resolved",
       (e: unknown) => (e instanceof Error ? e.name : String(e)),
     )
+    // The current table comes first, one microtask after subscribing (`coalesce`).
+    expect(seen).toHaveLength(0)
+    await Promise.resolve()
     expect(seen).toHaveLength(1)
     expect(seen[0]?.game.phase._tag).toBe("Lobby")
 

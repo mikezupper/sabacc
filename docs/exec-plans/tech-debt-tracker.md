@@ -14,6 +14,9 @@ The vendored Gyral prerelease was replaced with exact npm 0.3.1 packages on
 the upgrade is recorded in the [completed plan](completed/2026-10-gyral-0.3.1.md).
 Exact npm 0.3.7 followed on 2026-10-28 (`sabacc-hk7`) with no `src/` change; the
 Vitest preset no longer lists Gyral packages to pre-bundle, since 0.3.7 does that itself.
+Exact npm 0.3.8 followed on 2026-10-29 (`sabacc-pk0`): both Vite configs use `gyral()`, the
+table watch hands its batching to Gyral's `coalesce: "microtask"`, `provideTable` supplies a
+driver list, and the bet field's parser uses `on()`.
 
 The next.9 assessment and implementation feedback is ready in
 [gyral-feedback.md](../references/gyral-feedback.md) for the owner to relay. The local
